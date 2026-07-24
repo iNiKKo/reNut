@@ -3,6 +3,8 @@
 #include <renut_engine/Timer.h>
 #include <rex/hook.h>
 
+void renutFsrHintTick();  // fsr_menu_hint.cpp: main-menu FSR3 hint (once per launch)
+
 //CPU Time
 REX_EXTERN(__imp__appMainTickPreDraw);
 REX_HOOK_RAW(appMainTickPreDraw){
@@ -13,6 +15,12 @@ REX_HOOK_RAW(appMainTickPreDraw){
     cpuMS = timer.elapsedMilliseconds();
     auto fpshook = fpsManager.GetCreateCounter("Tick");
     fpshook->Tick();
+
+    // Show the main-menu FSR3 hint once the menu is up. This wrapper runs every
+    // frame during the frontend (the FPS "Tick" counter works on the main menu),
+    // unlike the midasm appMainTickPreDrawStart stub, which the frontend loop
+    // apparently never reaches.
+    renutFsrHintTick();
 }
 
 //GPU Time

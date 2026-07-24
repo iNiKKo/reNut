@@ -5,6 +5,13 @@ longjmp_address = 0x82BB59B0
 
 
 [functions]
+# VDP/secure-connection object vtable methods (vtable 0x8219AE60). These are
+# indirect-only (referenced solely from function-pointer tables), so static
+# recompilation missed them and calling them faulted with "invalid or
+# unregistered function" during online peer-connection setup.
+0x82405980 = {}
+0x82405990 = {}
+0x82405998 = {}
 0x82B100E8 = {}
 0x82AEC718 = {}
 0x82B2F210 = {}
@@ -106,3 +113,4 @@ longjmp_address = 0x82BB59B0
 0x824A1278 = {}
 0x8220F210 = {name = "appMainTickPreDraw"}
 0x82222250 = {name = "appMainDraw"}
+0x822E18B8 = {}

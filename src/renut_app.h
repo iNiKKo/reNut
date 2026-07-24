@@ -33,8 +33,6 @@ public:
 
         //rex::discord_rpc::Start(Application ID, Settings);
         rex::discord_rpc::Start("1520303728047951892", rpc);
-
-        rex::cvar::LoadConfig("renut.toml"); 
     }
 
     void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {

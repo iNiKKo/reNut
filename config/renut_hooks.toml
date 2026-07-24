@@ -40,13 +40,6 @@ after_instruction = false
 jump_address_on_true = 0x824CE32C
 
 [[midasm_hook]]
-address = 0x823ED858
-name = "meGetResolutionParams_hook"
-registers = ["r5", "r6"]
-after_instruction = true
-jump_address_on_true = 0x823ED950
-
-[[midasm_hook]]
 address = 0x8228F610
 name = "Optimization_Hook"
 registers = []
@@ -214,6 +207,30 @@ registers = []
 after_instruction = false
 jump_address_on_true = 0x8222BD64
 
+# Dump Shaders: hook the entry of D3DDevice_CreateVertexShader (0x8264E8B0) and
+# D3DDevice_CreatePixelShader (0x8264E6A8). D3D9 is statically linked into the
+# XEX, so despite the rex_ names in renut_gpu_funcs.toml these are ordinary
+# recompiled guest functions (bodies in generated/renut_recomp.42.cpp) and a
+# midasm hook fires normally. Both hooks are at the function's first instruction
+# (`mflr r12`), so r3 still holds the incoming pFunction argument.
+#
+# Creation is the cheap chokepoint -- it runs once per shader at load, unlike the
+# Set*Shader path which runs per draw. pFunction is self-describing ([1] = header
+# size, [2] = microcode size), so one register is enough to dump the whole blob.
+# See shader_dump.cpp. Purely observational: neither hook returns or redirects.
+
+[[midasm_hook]]
+address = 0x8264E8B0
+name = "dumpVertexShader_hook"
+registers = ["r3"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8264E6A8
+name = "dumpPixelShader_hook"
+registers = ["r3"]
+after_instruction = false
+
 [[midasm_hook]]
 address = 0x82278380
 name = "Infinite_fuel_and_ammo"
@@ -289,6 +306,17 @@ after_instruction = false
 address = 0x82222250
 name = "appMainDrawend"
 after_instruction = true
+
+# FSR3 main-menu hint: arm when the frontend main-menu screen (scene id 68) is
+# created. sub_823E9AB0 is the create-by-index scene factory (reached by every
+# navigation path, unlike the navigate-first wrapper sub_823E9BA8); a2 = scene
+# index = r4 at entry. The box is shown a frame later from the pre-draw tick
+# (see fsr_menu_hint.cpp).
+[[midasm_hook]]
+address = 0x823E9AB0
+name = "fsrHint_sceneDetect"
+registers = ["r4"]
+after_instruction = false
 
 [[midasm_hook]]
 address = 0x8220F210
