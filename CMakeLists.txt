@@ -1,4 +1,3 @@
-
 # renut - ReXGlue Recompiled Project
 #
 # This file is yours to edit. 'rexglue migrate' will NOT overwrite it.
@@ -12,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(generated/rexglue.cmake)
 
+
 # Sources
 set(RENUT_SOURCES
     src/main.cpp
@@ -19,6 +19,12 @@ set(RENUT_SOURCES
     src/renut_engine/StopNSwap.cpp
 	src/renut_engine/frameHooks.cpp
     src/renut_engine/fixes/mullhwucrash.cpp
+	src/renut_engine/cvar_menu.cpp
+	src/renut_engine/FPS.cpp
+	src/renut_engine/shader_dump.cpp
+	src/renut_engine/frontend_debug_menu.cpp
+	src/renut_engine/townsfolk.cpp
+    src/renut_engine/reflections.cpp
 )
 
 if(WIN32)

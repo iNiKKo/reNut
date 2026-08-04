@@ -6,14 +6,14 @@ RtlSizeHeap = 0x82240200
 RtlReAllocateHeap = 0x82717428
 
 # file/io
-# CreateFileA = 0x82715378
-# ReadFile = 0x827156E0
-# WriteFile = 0x82715E50
-# SetFilePointer = 0x82715570
-# GetFileSize = 0x82715A20
-# GetFileSizeEx = 0x827190F8
+ CreateFileA = 0x82715378
+ ReadFile = 0x827156E0
+ WriteFile = 0x82715E50
+ SetFilePointer = 0x82715570
+ GetFileSize = 0x82715A20
+ GetFileSizeEx = 0x827190F8
  SetEndOfFile = 0x82715DA8
-# FlushFileBuffers = 0x82BCD9E0
+ FlushFileBuffers = 0x82BCD9E0
  DeleteFileA = 0x82BCD0C8
  CloseHandle = 0x82714358
  FindFirstFileA = 0x827152E8
@@ -23,6 +23,12 @@ RtlReAllocateHeap = 0x82717428
  GetFileAttributesA = 0x82715FF8
  GetFileAttributesExA = 0x82BCD3A8
  CompareFileTime = 0x827182B0
+# GetDiskFreeSpaceExA = 0x82715BF0
+# ^ the guest function exists and the -solar SDK *source* implements
+# rexcrt_GetDiskFreeSpaceExA, but the installed runtime you link against
+# (out/install/win-amd64/lib/rexruntimerd.lib) predates it, so enabling this
+# fails at link with "undefined symbol: rexcrt_GetDiskFreeSpaceExA".
+# Re-enable after rebuilding/reinstalling the SDK.
 
 # memory
 memcpy = 0x82BB4510
@@ -44,3 +50,20 @@ strrchr = 0x82BB61C0
 strcpy_s = 0x821F4BC0
 lstrlenA = 0x82BCD2F0
 lstrcmpiA = 0x82BCD260
+
+# wide string -- DISABLED. Do not re-enable without an SDK fix.
+# The runtime stores guest memory big-endian (rex::endian_store<T, std::endian::big>)
+# but src/kernel/crt/string.cpp's native_wcs* helpers take a raw `const int16_t*`
+# and never byte-swap, so:
+#   wcschr  - `*str != ch` compares byteswapped memory (0x4100) against a
+#             register-passed char (0x0041). Never matches. Broken outright.
+#   wcscmp  - equality works (both sides swapped) but ordering/sign is wrong.
+#   wcsncmp - same as wcscmp.
+# wcslen/wcsncpy/wcsstr happen to be endian-safe, but they are left off too so
+# the whole group stays consistent with the guest implementations.
+# wcslen = 0x82BB1798
+# wcscmp = 0x82261560
+# wcsncmp = 0x82BB3960
+# wcschr = 0x82BB4028
+# wcsncpy = 0x82BB4068
+# wcsstr = 0x82BB3508
