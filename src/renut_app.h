@@ -4,6 +4,8 @@
 #include "renut_engine/renut_logging.h"
 #include "renut_engine/overlays/renut_logging_overlay.h"
 #include "renut_engine/overlays/path_setup_wizard.h"
+#include "renut_engine/overlays/mnk_controls_dialog.h"
+#include "renut_engine/mnk_controls.h"
 #include "renut_engine/Timer.h"
 #include "renut_engine/Fps.h"
 #include "renut_engine/hooks.h"
@@ -46,6 +48,15 @@ public:
         path_wizard_ = new PathSetupWizard(drawer);
         drawer->AddDialog(path_wizard_);
 
+        // Keyboard & mouse: the window exists by the time dialogs are created,
+        // so this is where the host-side listener gets attached.
+        mnk_dialog_ = std::make_unique<MnkControlsDialog>(drawer);
+        drawer->AddDialog(mnk_dialog_.get());
+        renut::mnk::AttachWindow(window());
+    }
+
+    void OnShutdown() override {
+        renut::mnk::DetachWindow();
     }
 
     std::optional<rex::PathConfig> OnFinalizePaths(
@@ -62,4 +73,5 @@ private:
     std::string      app_name_;
     PathSetupWizard* path_wizard_ = nullptr;
     std::unique_ptr<FpsOverlayDialog> fps_dialog_;
+    std::unique_ptr<MnkControlsDialog> mnk_dialog_;
 };

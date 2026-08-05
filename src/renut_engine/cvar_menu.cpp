@@ -347,7 +347,9 @@ static std::string TrimWs(const std::string& s) {
   return s.substr(b, e - b + 1);
 }
 
-static void RenutSaveConfig() {
+// Not static: the controls overlay (overlays/mnk_controls_dialog.h) persists
+// rebinds through this too.
+void RenutSaveConfig() {
   // desired[name] = formatted TOML value, for every value cvar != its default.
   // managed = every value-cvar name, so we can update or drop its existing line.
   std::unordered_map<std::string, std::string> desired;
