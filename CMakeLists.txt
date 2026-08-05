@@ -24,6 +24,7 @@ set(RENUT_SOURCES
 	src/renut_engine/shader_dump.cpp
 	src/renut_engine/frontend_debug_menu.cpp
 	src/renut_engine/townsfolk.cpp
+	src/renut_engine/mnk_controls.cpp
 )
 
 if(WIN32)
