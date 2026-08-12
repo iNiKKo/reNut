@@ -13,3 +13,6 @@ assets/
 
 # Editor and backup noise.
 *.bak
+
+# Local Claude Code project settings.
+.claude/

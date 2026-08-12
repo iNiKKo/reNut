@@ -105,6 +105,12 @@ public:
         const rex::PathConfig& defaults,
         std::function<void(rex::PathConfig)> resume) override
     {
+        if (!path_wizard_) {
+            RNUT_WARN("path setup wizard unavailable (no graphics/ImGui surface); "
+                      "using default paths");
+            return defaults;
+        }
+
         path_wizard_->Init(app_name_, defaults, [resume](rex::PathConfig resolved) {
             resume(resolved);
             });

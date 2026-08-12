@@ -172,6 +172,12 @@ bool disable_screen_glow() {
     return REXCVAR_GET(disable_screen_glow);
 }
 
+REXCVAR_DEFINE_BOOL(disable_tessellated_draw, true, "Nuts&Bolts/Graphics", "Skips hardware-tessellated draws (character-model smoothing) to avoid a GPU hang seen on Linux/RADV. Off = restore tessellation once the underlying SDK bug is fixed.");
+
+bool disable_tessellated_draw() {
+    return REXCVAR_GET(disable_tessellated_draw);
+}
+
 
 bool disable_particles_sim()   { return REXCVAR_GET(disable_particles); }
 bool disable_particles_spawn() { return REXCVAR_GET(disable_particles); }
