@@ -98,10 +98,18 @@ REXCVAR_DEFINE_BOOL(dump_textures_raw, false, "Nuts&Bolts/Graphics",
 	"that come out wrong; costs disk, so leave it off for normal dumping.");
 
 REXCVAR_DEFINE_BOOL(replace_textures, false, "Nuts&Bolts/Graphics",
-	"Replace textures at bind time from 'textures/replace' next to the exe. A "
+	"Replace textures at bind time from the packs named by texture_packs. A "
 	"file named <hash>.dds overrides the texture whose dump has that hash. The "
 	"replacement must use the same format as the original but may be any size "
 	"and supply its own mips.");
+
+REXCVAR_DEFINE_STRING(texture_packs, "replace", "Nuts&Bolts/Graphics",
+	"Which texture replacement packs to load, as a ';'-separated list applied "
+	"in order -- when two packs provide the same texture, the one listed later "
+	"wins. Each entry is either a folder name under 'textures' next to the exe "
+	"(the default, 'replace', means textures/replace) or an absolute path. "
+	"Changing this reloads the packs; textures already swapped this session "
+	"keep the pack they were swapped with until a restart.");
 
 namespace {
 
@@ -311,8 +319,11 @@ std::unordered_set<uint64_t> g_dumped;
 // with.
 std::unordered_map<uint32_t, uint64_t> g_patched;
 
-bool g_replacementsScanned = false;
+// Merged view of every configured pack, and the texture_packs value it was
+// built from so a change to that cvar can be noticed and reloaded.
 std::unordered_map<uint64_t, std::filesystem::path> g_replacements;
+std::string g_scannedPacks;
+bool g_replacementsScanned = false;
 
 uint32_t alignUp(uint32_t value, uint32_t alignment)
 {
@@ -640,48 +651,100 @@ bool readDds(const std::filesystem::path& path, xenos::TextureFormat& formatOut,
 	return true;
 }
 
-void scanReplacements()
+// Splits the texture_packs list on ';'. Semicolon rather than comma because it
+// cannot occur in a Windows path, so absolute paths can be listed safely.
+std::vector<std::string> splitPackList(const std::string& list)
 {
+	std::vector<std::string> out;
+	for (size_t start = 0; start <= list.size();) {
+		const size_t sep = list.find(';', start);
+		const size_t stop = sep == std::string::npos ? list.size() : sep;
+
+		const std::string entry = list.substr(start, stop - start);
+		const size_t b = entry.find_first_not_of(" \t\"");
+		const size_t e = entry.find_last_not_of(" \t\"");
+		if (b != std::string::npos) out.push_back(entry.substr(b, e - b + 1));
+
+		if (sep == std::string::npos) break;
+		start = sep + 1;
+	}
+	return out;
+}
+
+// A bare name is a folder under 'textures' next to the exe; anything absolute
+// is taken as given, so packs can live outside the build directory.
+std::filesystem::path resolvePackPath(const std::string& entry)
+{
+	const std::filesystem::path path(entry);
+	return path.is_absolute() ? path : textureFolder(entry.c_str());
+}
+
+// Rebuilds the merged replacement table. Must be called with g_mutex held.
+void scanReplacements(const std::string& packList)
+{
+	g_replacements.clear();
+	g_scannedPacks = packList;
 	g_replacementsScanned = true;
 
-	const std::filesystem::path dir = textureFolder("replace");
-	std::error_code ec;
-	if (!std::filesystem::is_directory(dir, ec)) {
-		RNUT_INFO("texture replace: no {} folder, nothing to replace", dir.string());
+	// Any earlier "this texture has no replacement" decision was made against
+	// the previous pack list, so let every texture be looked at again. Already
+	// swapped textures are held back by g_patched, not by this.
+	for (auto& entry : g_watched) {
+		entry.second.replaceChecked = false;
+	}
+
+	const std::vector<std::string> packs = splitPackList(packList);
+	if (packs.empty()) {
+		RNUT_WARN("texture replace: texture_packs is empty, nothing will be replaced");
 		return;
 	}
 
-	for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
-		if (ec) break;
-		if (!entry.is_regular_file()) continue;
+	for (const std::string& pack : packs) {
+		const std::filesystem::path dir = resolvePackPath(pack);
 
-		const std::filesystem::path& path = entry.path();
-		std::string ext = path.extension().string();
-		std::transform(ext.begin(), ext.end(), ext.begin(),
-			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-		if (ext != ".dds") continue;
-
-		// The stem is the content hash the dumper named the original with.
-		const std::string stem = path.stem().string();
-		if (stem.size() != 16) {
-			RNUT_WARN("texture replace: skipping {} (name is not a 16-digit texture hash)",
-				path.filename().string());
+		std::error_code ec;
+		if (!std::filesystem::is_directory(dir, ec)) {
+			RNUT_WARN("texture replace: pack '{}' not found at {}", pack, dir.string());
 			continue;
 		}
 
-		char* end = nullptr;
-		const uint64_t hash = std::strtoull(stem.c_str(), &end, 16);
-		if (end != stem.c_str() + stem.size()) {
-			RNUT_WARN("texture replace: skipping {} (name is not a 16-digit texture hash)",
-				path.filename().string());
-			continue;
+		size_t loaded = 0;
+		size_t overridden = 0;
+		for (const auto& file : std::filesystem::directory_iterator(dir, ec)) {
+			if (ec) break;
+			if (!file.is_regular_file()) continue;
+
+			const std::filesystem::path& path = file.path();
+			std::string ext = path.extension().string();
+			std::transform(ext.begin(), ext.end(), ext.begin(),
+				[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			if (ext != ".dds") continue;
+
+			// The stem is the content hash the dumper named the original with.
+			const std::string stem = path.stem().string();
+			char* end = nullptr;
+			const uint64_t hash = stem.size() == 16 ? std::strtoull(stem.c_str(), &end, 16) : 0;
+			if (stem.size() != 16 || end != stem.c_str() + stem.size()) {
+				RNUT_WARN("texture replace: skipping {}/{} (name is not a 16-digit texture hash)",
+					pack, path.filename().string());
+				continue;
+			}
+
+			// Later packs win, so a pack listed after another can override it.
+			if (!g_replacements.insert_or_assign(hash, path).second) ++overridden;
+			++loaded;
 		}
 
-		g_replacements.emplace(hash, path);
+		if (overridden) {
+			RNUT_INFO("texture replace: pack '{}': {} texture(s), {} overriding an earlier pack",
+				pack, loaded, overridden);
+		} else {
+			RNUT_INFO("texture replace: pack '{}': {} texture(s)", pack, loaded);
+		}
 	}
 
-	RNUT_INFO("texture replace: {} replacement(s) loaded from {}",
-		g_replacements.size(), dir.string());
+	RNUT_INFO("texture replace: {} replacement(s) from {} pack(s)",
+		g_replacements.size(), packs.size());
 }
 
 // Write a replacement's texel data into freshly allocated guest physical
@@ -997,7 +1060,15 @@ void handleTexture(uint32_t pTexture)
 	std::filesystem::path replacementPath;
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
-		if (!g_replacementsScanned) scanReplacements();
+
+		// Reload whenever the configured pack list differs from the one the
+		// table was built from, so editing texture_packs takes effect without
+		// a restart for textures that have not been swapped yet.
+		const std::string packList = REXCVAR_GET(texture_packs);
+		if (!g_replacementsScanned || packList != g_scannedPacks) {
+			scanReplacements(packList);
+		}
+
 		auto it = g_replacements.find(hash);
 		if (it == g_replacements.end()) return;
 		replacementPath = it->second;
