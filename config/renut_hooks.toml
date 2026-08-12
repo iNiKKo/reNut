@@ -4,14 +4,12 @@ name = "overworld_vehicles_hook"
 registers = ["r23", "r26"]
 after_instruction = false
 
-# submenu row count (cvar mode).
 [[midasm_hook]]
 address = 0x825a8c88
 name = "pauseMenu_InjectItems"
 registers = []
 after_instruction = false
 
-# XuiContainerSetCurSel).
 [[midasm_hook]]
 address = 0x825a8d18
 name = "pauseMenu_RestoreSel"
@@ -51,7 +49,6 @@ registers = []
 after_instruction = false
 jump_address_on_true = 0x823B38BC
 
-# Cached shadow map, 512 tile -> 2048 R16F atlas (sub_823B3CE0)
 [[midasm_hook]]
 address = 0x823B3EF4
 name = "disable_shadows_cached"
@@ -78,7 +75,6 @@ name = "disable_msaa_color"
 registers = ["r6"]
 after_instruction = false
 
-# Depth scene surface: bl D3DDevice_CreateSurface (r6 = MultiSample).
 [[midasm_hook]]
 address = 0x823ED6E4
 name = "disable_msaa_depth"
@@ -106,7 +102,6 @@ registers = []
 after_instruction = false
 jump_address_on_true = 0x822297E8
 
-# "skip empty slot" branch.
 [[midasm_hook]]
 address = 0x82229858
 name = "disable_particles_spawn"
@@ -153,6 +148,13 @@ after_instruction = false
 address = 0x8264E6A8
 name = "dumpPixelShader_hook"
 registers = ["r3"]
+after_instruction = false
+
+# D3DDevice_SetTexture -- r5 = pTexture. Texture dumping and replacement.
+[[midasm_hook]]
+address = 0x8222F410
+name = "textureTools_SetTexture_hook"
+registers = ["r5"]
 after_instruction = false
 
 [[midasm_hook]]
@@ -202,7 +204,6 @@ registers = ["r3", "r5"]
 after_instruction = true
 jump_address_on_false = 0x8251CABC
  
-# Framerate Related Hooks
 [[midasm_hook]]
 address = 0x8246e7a8
 name = "klungoConstruct_hook"
@@ -221,25 +222,6 @@ name = "refreshRate_hook"
 registers = ["r3"]
 after_instruction = false
 
-[[midasm_hook]]
-address = 0x82222250
-name = "appMainDrawStart"
-after_instruction = false
-
-[[midasm_hook]]
-address = 0x82222250
-name = "appMainDrawend"
-after_instruction = true
-
-[[midasm_hook]]
-address = 0x8220F210
-name = "appMainTickPreDrawStart"
-after_instruction = false
-
-[[midasm_hook]]
-address = 0x8220F210
-name = "appMainTickPreDrawend"
-after_instruction = true
 
 [[midasm_hook]]
 address = 0x8239fc6c

@@ -15,7 +15,11 @@
 #include <rex/input/input.h>
 #include <rex/system/xtypes.h>
 
+#include "imgui.h"
+#include "renut_logging.h"
+
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -440,16 +444,21 @@ float g_look_carry_x = 0.0f;
 float g_look_carry_y = 0.0f;
 
 // True while the game (not an overlay) owns input.
+//
+// rex::input::InputSystem exposes no getter for this. SetActiveCallback pushes a
+// predicate down into each InputDriver and only the drivers read it back, via
+// InputDriver::is_active(). Rather than replace that callback -- there is one
+// slot, so overriding it would disable the SDK's own overlay gating -- ask ImGui
+// the same question the SDK's callback in rex_app.cpp asks.
 bool GameOwnsInput() {
-  auto* runtime = rex::Runtime::instance();
-  if (!runtime) {
-    return false;
+  // Before the drawer is up there is no context, and the game has input.
+  if (!ImGui::GetCurrentContext()) {
+    return true;
   }
-  auto* input_system = static_cast<rex::input::InputSystem*>(runtime->input_system());
-  if (!input_system) {
-    return true;  // no input system to ask; assume the game has it
-  }
-  return input_system->IsGameInputActive();
+  const ImGuiIO& io = ImGui::GetIO();
+  // Keyboard as well as mouse, unlike the SDK's callback: these are mouse and
+  // keyboard controls, so typing into a console must not also drive the game.
+  return !io.WantCaptureMouse && !io.WantCaptureKeyboard;
 }
 
 // Set while reNut's controls overlay is up.
@@ -461,8 +470,30 @@ bool g_overlay_open = false;
 bool g_no_physical_pad = false;
 
 bool ControlsActive() {
-  return REXCVAR_GET(mnk_controls) && g_input.attached() && g_input.has_focus() &&
-         !g_overlay_open && !g_input.IsCapturing() && GameOwnsInput();
+  const bool enabled = REXCVAR_GET(mnk_controls);
+  const bool attached = g_input.attached();
+  const bool focused = g_input.has_focus();
+  const bool no_overlay = !g_overlay_open;
+  const bool not_capturing = !g_input.IsCapturing();
+  const bool game_owns = GameOwnsInput();
+
+  const bool active = enabled && attached && focused && no_overlay && not_capturing && game_owns;
+
+  // Every one of these terms fails the same silent way from the outside: the
+  // controls simply do nothing. Log which combination is in force, but only when
+  // it changes -- the guest thread calls this on every pad poll, so logging
+  // unconditionally would flood the file.
+  static std::atomic<uint32_t> last_state{~0u};
+  const uint32_t state = (enabled ? 1u : 0u) | (attached ? 2u : 0u) | (focused ? 4u : 0u) |
+                         (no_overlay ? 8u : 0u) | (not_capturing ? 16u : 0u) |
+                         (game_owns ? 32u : 0u);
+  if (last_state.exchange(state) != state) {
+    RNUT_INFO("mnk gate {}: cvar={} attached={} focus={} no_overlay={} not_capturing={} game_owns={}",
+              active ? "ACTIVE" : "blocked", enabled, attached, focused, no_overlay, not_capturing,
+              game_owns);
+  }
+
+  return active;
 }
 
 uint32_t PadSlot() {

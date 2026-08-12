@@ -10,7 +10,7 @@
 #include "renut_engine/Fps.h"
 #include "renut_engine/hooks.h"
 #include <rex/ui/window.h>
-#include <rex/discord_rpc.h>
+//#include <rex/discord_rpc.h>
 #include <functional>
 #include <string>
 
@@ -25,19 +25,19 @@ public:
     }
 
 
-    void OnPostSetup() override {
-        rex::discord_rpc::Presence rpc;
+    // void OnPostSetup() override {
+    //     rex::discord_rpc::Presence rpc;
 
-        rpc.details_ = "";
-        rpc.state_ = "";
-        rpc.large_image_key_ = "e242d6b6-c34e-47a1-8c2a-5297fe33bce7";
-        rpc.large_image_text_ = "renut";
+    //     rpc.details_ = "";
+    //     rpc.state_ = "";
+    //     rpc.large_image_key_ = "e242d6b6-c34e-47a1-8c2a-5297fe33bce7";
+    //     rpc.large_image_text_ = "renut";
 
-        //rex::discord_rpc::Start(Application ID, Settings);
-        rex::discord_rpc::Start("1520303728047951892", rpc);
+    //     //rex::discord_rpc::Start(Application ID, Settings);
+    //     rex::discord_rpc::Start("1520303728047951892", rpc);
 
-        rex::cvar::LoadConfig("renut.toml"); 
-    }
+    //     rex::cvar::LoadConfig("renut.toml"); 
+    // }
 
     void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
         //drawer->AddDialog(new FpsOverlayDialog(drawer));

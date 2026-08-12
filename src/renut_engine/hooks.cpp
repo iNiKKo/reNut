@@ -55,6 +55,8 @@ REXCVAR_DEFINE_BOOL(disable_msaa, false, "Nuts&Bolts/Graphics", "Disables MSAA o
 // Name = "Disable Motion Blur"
 REXCVAR_DEFINE_BOOL(disable_motion_blur, false, "Nuts&Bolts/Graphics", "Disables the full-screen speed/camera motion blur");
 
+inline int bWidth = 640;
+inline int bHeight = 480;
 auto frameTime = std::chrono::system_clock::now();
 int frame = 0;
 
@@ -78,6 +80,16 @@ bool no_notes_spent() {
 void renutCvarMenu_FrameTick();
 
 
+
+bool meGetResolutionParams_hook(PPCRegister& r5, PPCRegister& r6) {
+    // r5.u32 = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&bWidth));
+     //r6.u32 = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&bHeight));
+    //if (REXCVAR_GET(lowres)) {
+    //
+    //    return true;
+    //}
+    return false;
+}
 
 void Optimization_Hook() {
     std::this_thread::yield();

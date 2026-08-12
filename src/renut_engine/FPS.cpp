@@ -58,14 +58,3 @@ void FPSCounter::Tick(){
     averageFps = 1000.0f / averageMs;
 }
 
-void appMainDrawStart() {
-}
-
-void appMainDrawend() {
-}
-
-void appMainTickPreDrawStart() {
-}
-
-void appMainTickPreDrawend() {
-}
