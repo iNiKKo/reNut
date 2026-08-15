@@ -13,6 +13,11 @@ assets/
 
 # Editor and backup noise.
 *.bak
+__pycache__/
 
 # Local Claude Code project settings.
 .claude/
+
+# Working/planning docs -- local reference only, not for the fork.
+DESIGN_deferred_vfetch_flush.md
+PLAN_native_renderer.md

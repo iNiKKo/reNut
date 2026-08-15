@@ -34,7 +34,7 @@ public:
 
         // First-run check — if a valid saved config exists, skip the wizard entirely
         if (auto saved = PathConfigStore::TryLoad(app_name)) {
-            rex::PathConfig cfg;
+            rex::PathConfig cfg = defaults;
             cfg.game_data_root = saved->game_data_root;
             cfg.user_data_root = saved->user_data_root;
             cfg.update_data_root = saved->update_data_root;
@@ -43,6 +43,7 @@ public:
         }
 
         // No saved config — show the wizard
+        defaults_ = defaults;
         game_data_buf_ = defaults.game_data_root.string();
         user_data_buf_ = defaults.user_data_root.string();
         update_data_buf_ = defaults.update_data_root.string();
@@ -234,7 +235,7 @@ private:
         visible_ = false;
         error_.clear();
 
-        rex::PathConfig cfg;
+        rex::PathConfig cfg = defaults_;
         cfg.game_data_root = std::move(game);
         cfg.user_data_root = std::move(user);
         cfg.update_data_root = std::move(update);
@@ -248,11 +249,12 @@ private:
         on_complete_(std::move(cfg));
     }
 
-    std::string  app_name_;
-    bool         visible_ = false;
-    std::string  game_data_buf_;
-    std::string  user_data_buf_;
-    std::string  update_data_buf_;
-    std::string  error_;
-    CompletionFn on_complete_;
+    std::string     app_name_;
+    rex::PathConfig defaults_;
+    bool            visible_ = false;
+    std::string     game_data_buf_;
+    std::string     user_data_buf_;
+    std::string     update_data_buf_;
+    std::string     error_;
+    CompletionFn    on_complete_;
 };

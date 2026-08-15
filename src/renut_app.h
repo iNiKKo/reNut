@@ -3,10 +3,13 @@
 #include "renut_engine/overlays/fps_overlay_dialog.h"
 #include "renut_engine/renut_logging.h"
 #include "renut_engine/overlays/renut_logging_overlay.h"
+#include "renut_engine/overlays/ab_benchmark_overlay.h"
+#include "renut_engine/overlays/render_stats_overlay.h"
 #include "renut_engine/overlays/path_setup_wizard.h"
 #include "renut_engine/Timer.h"
 #include "renut_engine/Fps.h"
 #include "renut_engine/hooks.h"
+#include <rex/cvar.h>
 #include <rex/ui/window.h>
 #ifdef _WIN32
 #include <rex/discord_rpc.h>
@@ -14,7 +17,6 @@
 #include <functional>
 #include <string>
 #ifndef _WIN32
-#include <rex/cvar.h>
 #include "renut_engine/linuxfixes/xdg_paths.h"
 #include "renut_engine/overlays/mnk_controls_dialog.h"
 #include "renut_engine/mnk_controls.h"
@@ -78,7 +80,10 @@ public:
         rex::discord_rpc::Start("1520303728047951892", rpc);
 
         rex::cvar::LoadConfig("renut.toml");
-    #endif 
+    #endif
+        rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
+        rex::cvar::SetFlagByName("readback_resolve", "none");
+        rex::cvar::SetFlagByName("readback_memexport", "false");
      }
 
     void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
@@ -87,6 +92,8 @@ public:
         fps_dialog_->fpsManager = &fpsManager;
         drawer->AddDialog(fps_dialog_.get());
         drawer->AddDialog(new RenuLogOverlayDialog(drawer));
+        drawer->AddDialog(new AbBenchmarkOverlayDialog(drawer));
+        drawer->AddDialog(new RenderStatsOverlayDialog(drawer));
         path_wizard_ = new PathSetupWizard(drawer);
         drawer->AddDialog(path_wizard_);
 

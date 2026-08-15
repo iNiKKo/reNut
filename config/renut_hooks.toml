@@ -163,6 +163,72 @@ registers = ["r3"]
 after_instruction = false
 
 [[midasm_hook]]
+address = 0x8264EA90
+name = "dumpVertexDeclaration_hook"
+registers = ["r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222A0A8
+name = "dumpVertexShaderSet_hook"
+registers = ["r3", "r4"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82205700
+name = "dumpVertexDeclarationSet_hook"
+registers = ["r3", "r4"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x822469D0
+name = "gameActivityAnimationStream"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82246AA0
+name = "gameActivityAnimationStreamEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82B0E5B0
+name = "gameActivityBodyBlend"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82B0E634
+name = "gameActivityBodyBlendEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x823CCE78
+name = "gameActivityActorScript"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x823CD3FC
+name = "gameActivityActorScriptEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8226CD88
+name = "gameActivityActorGeneration"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8226CEC4
+name = "gameActivityActorGenerationEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
 address = 0x82278380
 name = "Infinite_fuel_and_ammo"
 registers = []
