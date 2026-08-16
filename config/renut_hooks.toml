@@ -240,3 +240,21 @@ address = 0x823a00a4
 name = "renutMnk_ApplyPadState"
 registers = ["r3", "r4"]
 after_instruction = false
+
+[[midasm_hook]]
+address = 0x8251D438
+name = "Max_Acquired_Parts_Access_hook_1"
+registers = ["r7"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8251DCCC
+name = "Max_Acquired_Parts_Access_hook_2"
+registers = ["r10"]
+after_instruction = true
+
+[[midasm_hook]]
+address = 0x8255ed1c
+name = "Max_Acquired_Parts_Access_hook_3"
+registers = ["r9"]
+after_instruction = true
