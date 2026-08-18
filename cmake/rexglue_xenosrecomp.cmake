@@ -9,14 +9,14 @@
 #     combined, real, compiled (SPIR-V) shader cache .cpp, for the
 #     "convert all the important shaders" effort. See tools/xenos_batch_convert.py
 #     for why this isn't just XenosRecomp's own directory-scan mode: 26/748
-#     real Banjo shaders segfault it outright (confirmed 2026-08-17), and its
+#     real Banjo shaders segfault it outright, and its
 #     directory driver has no per-shader crash recovery -- the batch script
 #     isolates each shader in its own subprocess so one crasher doesn't take
 #     down the whole cache.
 
 include(FetchContent)
 
-# Real, unpatched upstream bugs (confirmed 2026-08-16, see
+# Real, unpatched upstream bugs (confirmed see
 # renut_shader_conversion_blockers.md memory + cmake/patches/xenosrecomp_native_renderer.patch's
 # own header comment). Two real, independent fixes bundled in one patch:
 #
@@ -28,8 +28,8 @@ include(FetchContent)
 # means we learn NOTHING about why it failed -- just "crash", no stderr, no shader hash in the
 # message. This patch turns every one of those into a graceful, logged skip (shader hash + real
 # reason printed, shader simply omitted from the output cache) instead of a silent segfault --
-# real robustness fix, not upstream-reported (checked: zero related issues/PRs in
-# hedge-dev/XenosRecomp as of 2026-08-16).
+# not upstream-reported (checked: zero related issues/PRs in
+# hedge-dev/XenosRecomp).
 #
 # 2. XenosRecomp's combined multi-shader pass (main.cpp, std::execution::par_unseq over all
 # shaders) has a REAL, confirmed, deterministic concurrency bug: shaders that convert
@@ -49,7 +49,7 @@ include(FetchContent)
 # `git apply` on the second+ configure since the patch no longer applies cleanly to already-
 # patched source -- only apply when it actually still needs it.
 #
-# REAL BUG FOUND AND FIXED (2026-08-16): PATCH_COMMAND is executed directly via
+# REAL BUG FOUND AND FIXED: PATCH_COMMAND is executed directly via
 # execute_process, NOT through a shell -- so a bare command string containing
 # shell operators (&&, ||, 2>/dev/null) does NOT do conditional/redirection
 # logic. Every token, including "&&", "||", "git", "apply", etc., gets passed
@@ -59,7 +59,7 @@ include(FetchContent)
 # routing the whole idempotent-apply logic through `sh -c` so the shell
 # operators are interpreted as intended.
 #
-# 2026-08-17: xenosrecomp_native_renderer.patch SUPERSEDES the old
+# xenosrecomp_native_renderer.patch SUPERSEDES the old
 # xenosrecomp_graceful_skip.patch (deleted) -- it is that same patch's full
 # content PLUS this session's native-renderer fixes (256-bit boolean-constant
 # file instead of 1 dword; positional [[vk::location]] instead of the
@@ -67,7 +67,7 @@ include(FetchContent)
 # Normal/Tangent/Binormal; ALU register file 32 -> 64), captured via `git diff`
 # against the pristine FetchContent checkout and verified with `git apply
 # --check` against a fresh clone of the same upstream commit. See
-# docs/ai/history.md's "DONE (2026-08-17)" section for the full rationale and
+# docs/ai/history.md's "DONE" section for the full rationale and
 # measured before/after shader-conversion yield. Kept as ONE combined patch
 # file (not two applied in sequence) since PATCH_COMMAND's idempotent
 # check-then-apply logic only handles a single patch cleanly.
@@ -98,7 +98,7 @@ if(NOT TARGET xenos_cache_unpack)
     target_include_directories(xenos_cache_unpack PRIVATE
         "${CMAKE_SOURCE_DIR}/src"
         "${xenosrecomp_SOURCE_DIR}/thirdparty/smol-v/source"
-        # Real hash-remap fix (2026-08-16, see xenos_cache_unpack.cpp's
+        # Real hash-remap fix (see xenos_cache_unpack.cpp's
         # BuildHashRemap()): xxHash is header-only (XXH_INLINE_ALL), no new
         # link target needed -- reuses the same real xxHash copy XenosRecomp
         # itself was already fetched with, no separate dependency to manage.
@@ -148,7 +148,7 @@ endfunction()
 # renut_synthesize_constant_tables(SHADER_DUMP_DIR <dir> REXSDK_DIR <dir>
 #                                   OUTPUT_DIR <dir>)
 #
-# Real fix (2026-08-16): most captured Banjo-Kazooie shaders have
+# most captured Banjo-Kazooie shaders have
 # constantTableOffset == 0 in their real container header -- the game's
 # build stripped the D3DX9 constant-reflection table XenosRecomp needs (see
 # XenosRecomp's own README: "If this data is missing, the recompiler will
@@ -247,7 +247,7 @@ endfunction()
 # renut_synthesize_containers_from_ucode(UCODE_DIR <dir> REXSDK_DIR <dir>
 #                                         OUTPUT_DIR <dir>)
 #
-# Real fix (2026-08-16): this game's MOST-USED shaders never call D3D9's
+# this game's MOST-USED shaders never call D3D9's
 # CreateVertexShader/CreatePixelShader at all -- they're loaded directly
 # into GPU sequencer memory via IM_LOAD/IM_LOAD_IMMEDIATE PM4 packets
 # (confirmed via direct source investigation and cross-referenced against
@@ -274,7 +274,7 @@ endfunction()
 # regardless of origin, so both sources merge into one real, combined
 # shader pool for the batch converter below to process together.
 #
-# Real follow-up finding (2026-08-16, same session): 1590/2143 shaders from
+# Real follow-up finding (same session): 1590/2143 shaders from
 # this path DID convert and DID render natively in-game (confirmed via
 # real `native pipeline: ... created` log lines, 148 distinct pairs) --
 # but with real, visible geometry corruption, because real D3D9 vertex-
@@ -338,7 +338,7 @@ function(renut_synthesize_containers_from_ucode)
     set(_stamp "${ARG_OUTPUT_DIR}/.ucode_synthesized_stamp")
 
     file(GLOB _ucode_files "${ARG_UCODE_DIR}/*.ucode")
-    # Real bug found+fixed 2026-08-17: build_synthetic_container.py reads
+    # build_synthetic_container.py reads
     # real captured vertex-declaration usage from
     # <ucode_dir>/../shaders_vertdecl/vs_<hash>.vertdecl.txt when present
     # (see its own --vertdecl-dir default), but this DEPENDS list never
@@ -356,7 +356,7 @@ function(renut_synthesize_containers_from_ucode)
                 "${ARG_UCODE_DIR}"
                 "${ARG_OUTPUT_DIR}"
                 $<TARGET_FILE:ucode_analyze>
-                # TEMP (2026-08-16): --reject-heuristic disabled to isolate
+                # TEMP: --reject-heuristic disabled to isolate
                 # the remaining live-native-shader corruption bug (confirmed
                 # NOT the location bug, NOT native/stock mixing -- see
                 # memory). RE-ENABLE once the real cause is found+fixed or
@@ -401,7 +401,7 @@ function(renut_xenos_shader_batch target_name)
     set(_common_header "${xenosrecomp_SOURCE_DIR}/XenosRecomp/shader_common.h")
     set(_batch_script "${CMAKE_SOURCE_DIR}/tools/xenos_batch_convert.py")
 
-    # Real hash-remap fix (2026-08-16): XenosRecomp's own cache-entry hash
+    # Real hash-remap fix: XenosRecomp's own cache-entry hash
     # is NOT the same value the Vulkan pipeline cache looks shaders up by at
     # runtime -- see xenos_cache_unpack.cpp's BuildHashRemap() for the full
     # explanation. This file carries the real data stage 2 needs to fix it.
@@ -428,7 +428,7 @@ function(renut_xenos_shader_batch target_name)
     # Also produces _remap_file (see above) as a second real output.
     set(_compressed_cache "${ARG_OUTPUT}.compressed.cpp")
 
-    # Real bug found+fixed 2026-08-16: DEPENDS never listed the actual
+    # DEPENDS never listed the actual
     # shader dump directory's CONTENTS, only the tool/header/script -- so
     # ninja had no way to know new/changed .bin files should trigger a
     # rebuild, and correctly (from its own point of view) reported "no work

@@ -137,12 +137,12 @@ registers = []
 after_instruction = false
 jump_address_on_true = 0x8222BD64
 
-# Real fix (2026-08-17): same handle-vs-real-pointer correlation as
+# Same handle-vs-pointer correlation as
 # dumpVertexDeclaration_hook/dumpVertexDeclarationCreated_hook, but for
 # vertex shaders -- sub_8264E8B0 (this same address) allocates a handle
 # object and returns it in r3; SetVertexShader (0x8222A0A8) receives that
-# handle, not the raw blob pointer. Capture the real pointer here (entry)
-# and pair it with the handle at the function's real return point below.
+# handle, not the raw blob pointer. Capture the pointer here (entry)
+# and pair it with the handle at the function's return point below.
 [[midasm_hook]]
 address = 0x8264E8B0
 name = "dumpVertexShaderCreate_hook"
@@ -285,13 +285,13 @@ name = "dumpVertexDeclaration_hook"
 registers = ["r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"]
 after_instruction = false
 
-# Real fix (2026-08-17): sub_8264EA90's real return point (confirmed via
-# recompiled-code inspection -- both its success and failure paths converge
-# here, at "addi r1,r1,112", with r3 already holding the just-allocated
-# vertex-declaration handle, or 0 on failure). Needed to correlate the
-# elements-array pointer captured at entry (dumpVertexDeclaration_hook,
-# above) with the handle SetVertexDeclaration (0x82205700) later receives --
-# see g_declHandleToElements in shader_dump.cpp for the full story.
+# sub_8264EA90's return point (confirmed via recompiled-code inspection --
+# both its success and failure paths converge here, at "addi r1,r1,112",
+# with r3 already holding the just-allocated vertex-declaration handle, or
+# 0 on failure). Needed to correlate the elements-array pointer captured at
+# entry (dumpVertexDeclaration_hook, above) with the handle
+# SetVertexDeclaration (0x82205700) later receives -- see
+# g_declHandleToElements in shader_dump.cpp for the full story.
 [[midasm_hook]]
 address = 0x8264EAFC
 name = "dumpVertexDeclarationCreated_hook"

@@ -48,7 +48,7 @@ std::unordered_set<uint64_t> g_dumped;
 //   +0x00 physicalOffset, +0x04 size, +0x08 field8, +0x0C fieldC,
 //   +0x10 field10, +0x14 interpolatorInfo  (24 bytes)
 //
-// Real bug fixed here (2026-08-16): words[1] ("headerSize") is actually
+// Real bug fixed here: words[1] ("headerSize") is actually
 // ShaderContainer::virtualSize, NOT a microcode start offset -- confirmed
 // via direct hex inspection of captured containers plus XenosRecomp's own
 // shader_recompiler.cpp:1559 (`shaderData + shaderContainer->virtualSize +
@@ -92,7 +92,7 @@ bool ResolveRealUcodeRange(const uint8_t* blob, uint32_t virtualSize, uint32_t p
 	return true;
 }
 
-// Real fix (2026-08-17): factored out of dumpVertexDeclUsage so it can be
+// factored out of dumpVertexDeclUsage so it can be
 // called from dumpVertexShaderCreate_hook -- see g_shaderHandleToUcodeHash's
 // own comment for why. Computes the SAME ucode-only hash
 // (post-ResolveRealUcodeRange) that must match the real Vulkan pipeline's
@@ -134,7 +134,7 @@ constexpr uint32_t kMaxVertexDeclElements = 32;  // scan cap, real decls are far
 constexpr uint32_t kMaxPlausibleVertexDeclElements = 16;
 constexpr uint8_t kMaxPlausibleVertexDeclUsage = 13;  // D3DDECLUSAGE_SAMPLE, the highest real value
 
-// Real fix (2026-08-17): MUST be called immediately when pElements is known
+// MUST be called immediately when pElements is known
 // fresh (at CreateVertexDeclaration time) -- see g_pendingDeclElements's own
 // comment for why deferring this read to SetVertexDeclaration time was
 // fatally broken (the array is frequently caller-stack-allocated and long
@@ -170,7 +170,7 @@ std::vector<VertexDeclElement> parsePlausibleVertexDecl(uint32_t pElements)
 		});
 	}
 
-	// Real safety fix (2026-08-17): the consumer (build_synthetic_container.py)
+	// Real safety fix: the consumer (build_synthetic_container.py)
 	// treats any captured file as ground truth, overriding its own heuristic
 	// fallback -- writing a garbage capture is WORSE than writing nothing,
 	// it would poison a shader the heuristic might have gotten right. Reject
@@ -225,8 +225,8 @@ void dumpShaderBlob(PPCRegister& r3, const char* tag)
 
 	const size_t total = static_cast<size_t>(headerSize) + ucodeSize;
 
-	// Real microcode range (2026-08-16 fix, see ResolveRealUcodeRange's
-	// header comment): headerSize/ucodeSize (virtualSize/physicalSize) mark
+	// Real microcode range (see ResolveRealUcodeRange's header comment):
+	// headerSize/ucodeSize (virtualSize/physicalSize) mark
 	// the whole container's virtual+physical regions, not where real Xenos
 	// instructions start/how long they run -- that needs shaderOffset ->
 	// Shader::physicalOffset/size. Falls back to the (known-wrong, but
@@ -241,7 +241,7 @@ void dumpShaderBlob(PPCRegister& r3, const char* tag)
 		realUcodeSize = ucodeSize;
 	}
 
-	// Real bug found+fixed (2026-08-18): this used to hash the whole blob
+	// Real bug found+fixed: this used to hash the whole blob
 	// (header+ucode, XXH3_64bits(blob, total)), NOT the same value as
 	// computeShaderUcodeHash() above or the real runtime
 	// Shader::ucode_data_hash() (pipeline_cache.cpp:
@@ -311,7 +311,7 @@ REXCVAR_DEFINE_BOOL(renut_dump_vertex_decl, false, "Nuts&Bolts/Graphics",
 std::mutex g_declMutex;
 std::unordered_set<uint32_t> g_declLogged;
 
-// Real fix (2026-08-17): sub_8264EA90 (the guest function this project's
+// sub_8264EA90 (the guest function this project's
 // "CreateVertexDeclaration" hook sits at the true entry of, confirmed via
 // direct recompiled-PPC-code inspection) allocates a NEW handle object and
 // returns it in r3 -- SetVertexDeclaration (0x82205700) later receives that
@@ -326,10 +326,9 @@ std::unordered_set<uint32_t> g_declLogged;
 // build a handle -> elements-pointer map so SetVertexDeclaration can look
 // up the real array by the handle it actually receives.
 //
-// Real bug found+fixed 2026-08-17 (second pass, after first real captures
-// came back corrupted): this game creates vertex declarations from MULTIPLE
-// THREADS concurrently (confirmed real -- captured log shows CreateVertexDeclaration
-// hooks firing from several distinct thread IDs). A single shared
+// This game creates vertex declarations from MULTIPLE THREADS concurrently
+// (confirmed -- captured log shows CreateVertexDeclaration hooks firing
+// from several distinct thread IDs). A single shared
 // g_pendingDeclElements meant thread A's entry-hook value could be
 // overwritten by thread B's own Create call before thread A's OWN exit hook
 // read it back, silently pairing thread A's handle with thread B's elements
@@ -340,8 +339,8 @@ std::unordered_set<uint32_t> g_declLogged;
 // thread's concurrent Create calls (safe because a single thread cannot
 // reenter CreateVertexDeclaration on itself before its own call returns).
 //
-// Real fix (2026-08-17, THIRD pass): even with thread_local, real captures
-// STILL came back corrupted -- proof: the exact same decl address
+// Even with thread_local, captures STILL came back corrupted -- proof:
+// the exact same decl address
 // (0x7018ef00) parsed to a DIFFERENT element count at different points in
 // the same session, which is impossible for real static data. Root cause:
 // pElements is very often a CALLER-STACK-ALLOCATED array (a local variable
@@ -359,7 +358,7 @@ std::unordered_map<uint32_t, std::vector<VertexDeclElement>> g_declHandleToEleme
 
 std::mutex g_vsMutex;
 uint64_t g_lastBoundVertexShaderUcodeHash = 0;
-// Real fix (2026-08-16): SetVertexDeclaration and SetVertexShader do NOT
+// SetVertexDeclaration and SetVertexShader do NOT
 // have a fixed call order -- confirmed via real captured log, this game
 // calls SetVertexDeclaration BEFORE SetVertexShader, so tracking only "the
 // last bound vertex shader" and dumping from the declaration hook alone
@@ -372,7 +371,7 @@ uint64_t g_lastBoundVertexShaderUcodeHash = 0;
 std::vector<VertexDeclElement> g_lastBoundVertexDeclElements;
 std::unordered_set<uint64_t> g_vertDeclDumped;
 
-// Real fix (2026-08-17): the SAME handle-vs-real-pointer confusion as
+// the SAME handle-vs-real-pointer confusion as
 // g_declHandleToElements above, but for vertex shaders. sub_8264E8B0 (the
 // guest function dumpVertexShader_hook already sits at the true entry of,
 // used by the separately-gated dump_guest_shaders feature) ALSO allocates a
@@ -389,8 +388,8 @@ std::unordered_set<uint64_t> g_vertDeclDumped;
 // above (multi-threaded CreateVertexShader calls cross-contaminating a
 // shared pending value).
 //
-// Real fix (2026-08-17, THIRD pass): same stack-staleness problem as
-// g_pendingDeclElements -- storing the raw pFunction pointer for later
+// Same stack-staleness problem as g_pendingDeclElements -- storing the
+// raw pFunction pointer for later
 // re-reading was unsafe if it's ever stack-sourced. Store the already-
 // computed ucode hash instead (0 = invalid/not yet known), computed
 // immediately at CreateVertexShader time via computeShaderUcodeHash().
@@ -411,8 +410,8 @@ void dumpVertexDeclaration_hook(PPCRegister& r3, PPCRegister& r4, PPCRegister& r
 		return;
 	}
 
-	// Real fix (2026-08-17, THIRD pass): parse immediately -- see
-	// g_pendingDeclElements's own comment for why deferring this read is
+	// Parse immediately -- see g_pendingDeclElements's own comment for
+	// why deferring this read is
 	// fatally broken for (very common) stack-sourced element arrays.
 	std::vector<VertexDeclElement> elements = parsePlausibleVertexDecl(pElements);
 
@@ -495,7 +494,7 @@ void dumpVertexShaderCreated_hook(PPCRegister& r3)
 	}
 }
 
-// Real bug found+fixed 2026-08-17: this is called from SetVertexShader AND
+// this is called from SetVertexShader AND
 // SetVertexDeclaration, both genuinely hot per-draw paths -- unconditionally
 // logging every bail meant ~70,000 lines/second in real play, which filled
 // and rotated past the log's whole retention window (21 files x 5MB) in
@@ -510,8 +509,8 @@ std::atomic<uint32_t> g_bailNoElementsLogged{0};
 std::atomic<uint32_t> g_bailNoHashLogged{0};
 }  // namespace
 
-// Real fix (2026-08-17, THIRD pass): takes ALREADY-PARSED, already-validated
-// data -- no more re-reading pElements/pFunction memory here, since both are
+// Takes ALREADY-PARSED, already-validated data -- no more re-reading
+// pElements/pFunction memory here, since both are
 // frequently stack-sourced and long stale by the time this runs (see
 // g_pendingDeclElements's and g_pendingShaderUcodeHash's own comments).
 void dumpVertexDeclUsage(const std::vector<VertexDeclElement>& elements, uint64_t ucodeHash)
@@ -561,7 +560,7 @@ void dumpVertexDeclUsage(const std::vector<VertexDeclElement>& elements, uint64_
 	RNUT_INFO("vertex decl usage: vs_{:016x} ({} elements)", ucodeHash, elements.size());
 }
 
-// TEMP DIAGNOSTIC (2026-08-16): writes a real hex-dump of a D3D9 object's
+// TEMP DIAGNOSTIC: writes a real hex-dump of a D3D9 object's
 // first 64 bytes straight to a file (immune to the log's 5MB rotation,
 // which was confirmed real -- the once-per-process log line this used to
 // be next to never survived to be read back, rotated out before the
@@ -646,8 +645,8 @@ void dumpVertexShaderSet_hook(PPCRegister& r3, PPCRegister& r4)
 		g_lastBoundVertexShaderUcodeHash = ucodeHash;
 		lastDecl = g_lastBoundVertexDeclElements;
 	}
-	// Real fix (2026-08-16, see g_lastBoundVertexDeclElements's own comment):
-	// no fixed call order between this hook and SetVertexDeclaration, so
+	// See g_lastBoundVertexDeclElements's own comment: no fixed call order
+	// between this hook and SetVertexDeclaration, so
 	// also try the dump here using whatever declaration was bound most
 	// recently -- covers the (confirmed real) case where the declaration
 	// is set first.

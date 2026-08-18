@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Batch-convert a directory of dumped guest shaders to compiled SPIR-V via
 XenosRecomp, isolating each shader in its own subprocess so a crash (26/748
-real Banjo shaders segfault XenosRecomp's own directory-scan mode, confirmed
-2026-08-17 -- see PLAN_native_renderer.md) only drops that one shader instead
-of aborting the whole batch.
+real Banjo shaders segfault XenosRecomp's own directory-scan mode) only
+drops that one shader instead of aborting the whole batch.
 
 XenosRecomp's directory-scan mode (see its main.cpp) is what actually invokes
 DXC and smol-v-encodes SPIR-V -- single-file mode only emits HLSL text. But
@@ -74,7 +73,7 @@ def find_containers(data: bytes):
             i += 4
 
 
-# Real per-shader result cache (2026-08-16): each real capture/recapture
+# Real per-shader result cache: each real capture/recapture
 # session re-touches or re-adds files across the WHOLE shader_dump_dir (a
 # fresh play session writes many files with new mtimes even for shaders
 # whose CONTENT is unchanged from before), and CMake's own DEPENDS on that
@@ -218,7 +217,7 @@ def main() -> int:
 
             pending.append((tag, content_hash, chunk))
 
-    # Real fix (2026-08-17, "only 4 cores used" report): this per-shader
+    # "Only 4 cores used" report: this per-shader
     # isolation loop used to run every pending shader through its own
     # XenosRecomp subprocess ONE AT A TIME on the main thread -- for a
     # ~2200-shader corpus that meant almost the entire batch-convert
@@ -269,7 +268,7 @@ def main() -> int:
                 (good_shaders_dir / f"{tag}.bin").write_bytes(chunk)
                 kept += 1
 
-                # Real bug found 2026-08-16: XenosRecomp's own cache-entry hash
+                # Real bug found XenosRecomp's own cache-entry hash
                 # (XXH3_64bits over the WHOLE container -- main.cpp's
                 # `XXH3_64bits(shaderContainer, dataSize)`) is NOT the same
                 # value the runtime looks shaders up by. The Vulkan pipeline
@@ -308,10 +307,10 @@ def main() -> int:
                                                              proc.stderr.decode(errors="replace")))
             return 1
 
-        # Real bug found 2026-08-16 (after the XenosRecomp crash-safety patch
-        # -- see cmake/patches/xenosrecomp_graceful_skip.patch -- started
-        # letting per-shader compile failures inside a MULTI-shader batch
-        # skip gracefully instead of crashing the whole process): shaders
+        # After the XenosRecomp crash-safety patch (see
+        # cmake/patches/xenosrecomp_graceful_skip.patch) started letting
+        # per-shader compile failures inside a MULTI-shader batch skip
+        # gracefully instead of crashing the whole process, shaders
         # that convert successfully in ISOLATION (this script's own per-
         # shader subprocess above, the real source of truth for "does this
         # shader work") can still silently fail when recompiled together
@@ -345,7 +344,7 @@ def main() -> int:
             for tag, status in results:
                 f.write(f"{tag} {status}\n")
 
-    # Real hash-mismatch fix (2026-08-16, see the comment above where
+    # Real hash-mismatch fix (see the comment above where
     # remap_entries is populated): write the REAL, WHOLE container bytes
     # (virtual+physical sections, exactly what XenosRecomp itself hashes) for
     # every successfully-converted shader. xenos_cache_unpack.cpp reads this

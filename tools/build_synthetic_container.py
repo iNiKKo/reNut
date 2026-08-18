@@ -3,14 +3,14 @@
 never captured by shader_dump.cpp's dump_guest_shaders hook (D3D9
 CreateVertexShader/CreatePixelShader), because it was loaded directly into
 GPU sequencer memory via IM_LOAD/IM_LOAD_IMMEDIATE PM4 packets -- confirmed
-real, structural gap, not a capture-timing bug (see PLAN_native_renderer.md).
+a structural gap, not a capture-timing bug (see docs/ai/research.md).
 
 Real raw microcode for such shaders IS available via the SDK's
 renut_dump_ucode_hash cvar (shaders_ucode_hash/<vs|ps>_<hash>.ucode), keyed
 by the real ucode_data_hash(). This script wraps that real microcode in a
 minimal, hand-built ShaderContainer.
 
-Automated end to end (2026-08-15 generalization): all per-shader vertex-fetch
+Automated end to end: all per-shader vertex-fetch
 and texture-fetch metadata (element count, data format, byte offset,
 instruction address, sampler fetch-constant/register mapping, interpolator
 count, color-output mask) is obtained by running tools/ucode_analyze -- a
@@ -79,9 +79,9 @@ _FORMAT_8_8_8_8 = 6
 # 11_11_10 get manual unpacking) -- but a real, consistent pattern was found
 # by sampling this game's actual captured shaders: 2-3 consecutive
 # 2_10_10_10 attributes immediately after POSITION, matching the exact
-# normal/tangent/binormal SHAPE, recurs across many real shaders (2026-08-16
-# sampling: vs_0112bc639335c58a, vs_054f86bb3d84dbb9, vs_07462764505df374,
-# etc all show this). Treating it the same as the documented normal formats
+# normal/tangent/binormal SHAPE, recurs across many real shaders (sampled:
+# vs_0112bc639335c58a, vs_054f86bb3d84dbb9, vs_07462764505df374, etc all
+# show this). Treating it the same as the documented normal formats
 # is a REAL INFERENCE from observed data, not a documented XenosRecomp
 # convention -- it gets the Vulkan input LOCATION right (location 1, per
 # USAGE_LOCATIONS) even though XenosRecomp won't apply special R11G11B10
@@ -117,7 +117,7 @@ def build_real_constant_table(float_regs: list[int], sampler_regs: list[int],
     kCondJmp handling) instead of the correct `g_Booleans & (1 << N)` form
     -- confirmed via direct source reading, not guessed.
 
-    Real fix (2026-08-17): the float4 entries used to be one ConstantInfo
+    the float4 entries used to be one ConstantInfo
     PER REGISTER (registerCount=1 each). shader_recompiler.cpp's recompile()
     (the ALU operand-formatting code) only emits the safe, bounds-clamped
     indexed accessor `constantName(index [+ a0|+ aL])` -- the ONLY form that
@@ -143,7 +143,7 @@ def build_real_constant_table(float_regs: list[int], sampler_regs: list[int],
     correctness risk for shaders that never use dynamic addressing, only a
     (harmless) widening of the declared range.
     """
-    # Real fix (2026-08-17, follow-up): shader_recompiler.cpp's own
+    # shader_recompiler.cpp's own
     # `tailCount = (isPixelShader ? 224 : 256) - registerIndex` is baked
     # into the grouped macro it emits REGARDLESS of what registerCount this
     # script declares -- so a grouped entry covering a pixel-shader register
@@ -267,7 +267,7 @@ def assign_usage_from_vertdecl(attributes: list[dict], vertdecl_elements: list[d
 def assign_usage_heuristic(attributes: list[dict]) -> None:
     """Fallback when no real captured D3D9 declaration is available yet.
 
-    REAL FIX (2026-08-16, second pass): the original version of this
+    REAL FIX (second pass): the original version of this
     heuristic (POSITION-first, everything else TEXCOORD0/1/2/...) was only
     ever verified against the ONE shader this whole native-renderer effort
     started with. Deployed broadly (1500+ shaders) it produced confirmed,
@@ -296,7 +296,7 @@ def assign_usage_heuristic(attributes: list[dict]) -> None:
     # whether this list is the full attribute set or a partial-match
     # remainder (assign_usage_from_vertdecl may have already claimed real
     # usage for some attributes before this function ever sees the rest).
-    # RE-ENABLED (2026-08-16, same session): consuming a 2nd/3rd
+    # RE-ENABLED (same session): consuming a 2nd/3rd
     # consecutive packed-normal-shaped attribute as TANGENT/BINORMAL was
     # tried, made things measurably WORSE, and was reverted -- but the real
     # root cause was NOT this heuristic itself, it was a separate,
@@ -321,8 +321,8 @@ def assign_usage_heuristic(attributes: list[dict]) -> None:
     # a 2nd/3rd packed attribute isn't really tangent/binormal.
     _NORMAL_LIKE_USAGES = [DECL_USAGE_NORMAL, DECL_USAGE_TANGENT, DECL_USAGE_BINORMAL]
     _NORMAL_LIKE_FORMATS = (_FORMAT_10_11_11, _FORMAT_11_11_10, _FORMAT_2_10_10_10)
-    # Real fix (2026-08-16, see build_vertex_container's own comment on
-    # binding_index): XenosRecomp deduplicates/names vertex-shader input
+    # See build_vertex_container's own comment on binding_index:
+    # XenosRecomp deduplicates/names vertex-shader input
     # parameters purely by (usage, usageIndex) -- shader_recompiler.cpp's
     # `semantic = usage<<4 | usageIndex` -- GLOBALLY across the whole
     # shader, not per real vertex-fetch binding. So every usage_index
@@ -341,8 +341,8 @@ def assign_usage_heuristic(attributes: list[dict]) -> None:
     # secondary vertex streams, exactly this fix's real repro shape (a
     # second binding with many repeating float4 attributes, real
     # bone-matrix-shaped data).
-    # Real fix (2026-08-16, second gap in the same class of bug the
-    # position_usage_index comment above describes): COLOR was still
+    # Same class of bug as the position_usage_index comment above:
+    # COLOR was still
     # hardcoded to usage_index=0 unconditionally, unlike TEXCOORD (which
     # already incremented). Any shader with 2+ real 8_8_8_8-shaped
     # attributes (confirmed real crash: "redefinition of parameter
@@ -379,19 +379,18 @@ def assign_usage_heuristic(attributes: list[dict]) -> None:
 
 class HeuristicRejected(Exception):
     """Raised when reject_heuristic=True and any vertex attribute needed the
-    fallback usage heuristic -- a real, requested opt-in filter (2026-08-16
-    session finding: the heuristic corrupts real geometry for shaders whose
-    layout isn't POSITION-then-TEXCOORDs, confirmed via real in-game visual
-    corruption once ~150 heuristic-based shaders went live simultaneously;
-    real vertex-declaration capture is structurally unavailable for these
-    shaders, same IM_LOAD root cause as shader creation itself -- see
-    PLAN_native_renderer.md), so callers that only want verified-correct
+    fallback usage heuristic -- an opt-in filter (the heuristic corrupts
+    real geometry for shaders whose layout isn't POSITION-then-TEXCOORDs,
+    confirmed via in-game visual corruption once ~150 heuristic-based
+    shaders went live simultaneously; vertex-declaration capture is
+    structurally unavailable for these shaders, same IM_LOAD root cause as
+    shader creation itself -- see docs/ai/research.md), so callers that
+    only want verified-correct
     containers can skip the rest instead of emitting a wrong one."""
 
 
 class MissingLiteralConstantData(Exception):
-    """Real fix (2026-08-17, user-requested "what does the game actually
-    need from a shader" investigation): raised when this shader's real,
+    """raised when this shader's real,
     ucode_analyze-detected float_constants includes a register in the real,
     empirically-confirmed "compiler-embedded literal constant" range
     (>= 252) -- checked directly against REAL captured shaders (shaders/*.bin
@@ -439,7 +438,7 @@ def read_ps_interpolator_usages(ps_container_path: Path) -> dict[int, tuple[int,
     interpolators[] array (PixelShader::interpolators, shader.h) and
     returns {register: (usage, usage_index)} for each entry.
 
-    Real idea this exists for (2026-08-16, from external research into
+    Real idea this exists for (from external research into
     Xenia's architecture -- see renut_shader_conversion_blockers.md
     memory): a vertex shader export register N and the paired pixel
     shader's import register N must carry the SAME real usage/usageIndex
@@ -502,7 +501,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
     # uses multiple bindings would need every attribute across all of them,
     # which this flattens rather than dropping).
     #
-    # Real bug found+fixed (2026-08-16): binding_index is now tracked and
+    # Real bug found+fixed: binding_index is now tracked and
     # carried through -- it did NOT exist before, and attributes were
     # sorted by offset_words GLOBALLY across every binding combined. Since
     # offset_words is relative to EACH BINDING's own stream (not a single
@@ -557,7 +556,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
     interpolator_count = bin(analysis["writes_interpolators"]).count("1")
 
     # VertexElement and Interpolator have DIFFERENT real on-disk bit layouts
-    # -- found EMPIRICALLY (2026-08-15) using a debug build of the real
+    # -- found EMPIRICALLY using a debug build of the real
     # XenosRecomp binary (fprintf added at each read site in
     # shader_recompiler.cpp), tested against a real container with single-
     # nibble/field-set test values swept across every bit position. This
@@ -577,7 +576,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
         pack_vertex_element(a["instr_addr"], a["usage"], a["usage_index"]) for a in attributes
     ]
 
-    # Real fix attempt (2026-08-16): interpolator OUTPUTS are a completely
+    # Interpolator OUTPUTS are a completely
     # different concept from vertex INPUTS (confirmed via direct
     # shader_recompiler.cpp reading: XenosRecomp's VS function signature
     # declares its interpolator outputs from a FIXED, global INTERPOLATORS[]
@@ -603,7 +602,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
     # XenosRecomp wires them together by index, this guarantees correct
     # linkage regardless of whether the usage NAME is "semantically real"
     # for this specific shader.
-    # Real, correct algorithm (2026-08-16, replaces the vertex-input-based
+    # Real, correct algorithm (replaces the vertex-input-based
     # guess above and the popcount-based interpolator_count from earlier):
     # confirmed via direct source reading (shader_code.h's ExportRegister
     # enum: VSInterpolator0..15 == literal values 0..15) that a vertex
@@ -691,7 +690,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
     vertex_shader_header += struct.pack(f">{len(vertex_elements)}I", *vertex_elements)
     vertex_shader_header += struct.pack(f">{len(interpolators)}I", *interpolators)
 
-    # Real fix (2026-08-17, follow-up): a shader using ONLY dynamic (a0/aL-
+    # A shader using ONLY dynamic (a0/aL-
     # relative) float constant addressing has NO entries in float_constants
     # at all (AnalyzeUcode only records STATIC register references there --
     # see translator.cpp's GatherOperandInformation, which sets
@@ -702,7 +701,7 @@ def build_vertex_container(ucode_bytes: bytes, analysis: dict, vertdecl_elements
     # c(...)` to resolve to. Matches xenos_synthesize_constant_table.py's
     # own real fix for the identical gap.
     float_constants = analysis.get("float_constants", [])
-    # Real fix (2026-08-17): check BEFORE the dynamic-addressing expansion
+    # check BEFORE the dynamic-addressing expansion
     # below -- that expansion legitimately claims the full 0-255 range for
     # an unrelated reason (the runtime can't know which specific registers
     # a dynamic a0/aL-relative access might touch), which would otherwise
@@ -761,7 +760,7 @@ def build_pixel_container(ucode_bytes: bytes, analysis: dict) -> bytes:
 
     field18 = 0
     interpolator_info = (len(interpolators) & 0x1F) << 5
-    # Real bug found+fixed (2026-08-16): only writes_color_targets bits were
+    # Real bug found+fixed: only writes_color_targets bits were
     # ever set here -- PIXEL_SHADER_OUTPUT_DEPTH was never included even
     # for shaders that genuinely write oDepth (real manual-depth-write
     # shaders, confirmed via real DXC "use of undeclared identifier
@@ -779,8 +778,8 @@ def build_pixel_container(ucode_bytes: bytes, analysis: dict) -> bytes:
     pixel_shader_header += struct.pack(f">{len(interpolator_words)}I", *interpolator_words)
 
     sampler_regs = sorted({tb["fetch_constant"] for tb in analysis["texture_bindings"]})
-    # Real fix (2026-08-17, follow-up): see the vertex-shader call site's
-    # own comment -- same real gap, pixel-shader side.
+    # See the vertex-shader call site's own comment -- same gap,
+    # pixel-shader side.
     float_constants = analysis.get("float_constants", [])
     check_for_missing_literal_constants(float_constants)
     if analysis.get("float_dynamic_addressing"):

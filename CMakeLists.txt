@@ -79,37 +79,36 @@ renut_xenos_shader(renut
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/renut_xenos_shader_vs_67021cae68a26b46.hlsl"
 )
 
-# Real constant-table synthesis (2026-08-16, see
-# renut_synthesize_constant_tables()'s own comment in
-# cmake/rexglue_xenosrecomp.cmake for the full story): most real captured
-# Banjo-Kazooie shaders are missing the D3DX9 constant-reflection table
-# XenosRecomp needs (a real upstream XenosRecomp limitation, not a reNut
+# Constant-table synthesis (see renut_synthesize_constant_tables()'s own
+# comment in cmake/rexglue_xenosrecomp.cmake for the full story): most
+# captured Banjo-Kazooie shaders are missing the D3DX9 constant-reflection
+# table XenosRecomp needs (an upstream XenosRecomp limitation, not a reNut
 # capture bug), so this step patches a build-tree COPY of the shader dump
 # with synthesized tables before the batch converter below ever sees it --
-# raises real conversion success from 36/253 to 101/253 shaders. Must run
-# before renut_xenos_shader_batch() so its SHADER_DUMP_DIR can point at the
-# patched copy instead of the raw dump.
+# raises conversion success from 36/253 to 101/253 shaders. Must run before
+# renut_xenos_shader_batch() so its SHADER_DUMP_DIR can point at the patched
+# copy instead of the raw dump.
 renut_synthesize_constant_tables(
     SHADER_DUMP_DIR "${CMAKE_BINARY_DIR}/shaders"
     REXSDK_DIR "${REXSDK_DIR}"
     OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders_synthesized"
 )
 
-# Real container synthesis from ucode-only captures (2026-08-16, see
+# Container synthesis from ucode-only captures (see
 # renut_synthesize_containers_from_ucode()'s own comment in
-# cmake/rexglue_xenosrecomp.cmake for the full story): this game's actual
+# cmake/rexglue_xenosrecomp.cmake for the full story): this game's
 # MOST-USED shaders never call D3D9's CreateVertexShader/CreatePixelShader
 # at all (loaded via GPU command-stream IM_LOAD packets instead), so
 # shader_dump.cpp's capture above structurally can never see them --
-# confirmed 0% overlap between that capture and real live draw identities.
+# confirmed 0% overlap between that capture and live draw identities.
 # renut_dump_ucode_hash's raw microcode captures (shaders_ucode_hash/) DO
 # cover them; this step rebuilds full containers for those and adds them
 # into the SAME shaders_synthesized/ directory the constant-table step
 # above just populated (that step clears+repopulates the directory from
 # shaders/ FIRST, this step only adds -- must run in exactly this order,
 # hence the explicit dependency below, or the ucode-derived containers
-# would get wiped). Verified end-to-end: unlocks 1492 additional real,
-# actually-drawn shaders (vs 101 from the D3D9-hook path alone).
+# would get wiped). Unlocks 1492 additional actually-drawn shaders (vs 101
+# from the D3D9-hook path alone).
 renut_synthesize_containers_from_ucode(
     UCODE_DIR "${CMAKE_BINARY_DIR}/shaders_ucode_hash"
     REXSDK_DIR "${REXSDK_DIR}"
@@ -149,15 +148,14 @@ if(TARGET renut_synthesize_containers_from_ucode_target AND TARGET renut_xenos_s
     add_dependencies(renut_xenos_shader_batch renut_synthesize_containers_from_ucode_target)
 endif()
 
-# Real bug found+fixed 2026-08-16: renut_xenos_shader_batch() above only wired
-# its DEPENDS onto `renut` (the top-level executable target), not onto
-# `rexgpu-nativevk` (the SDK-side plugin .so that actually #includes the
-# generated cache .cpp -- confirmed via renut_xenos_pipeline_cache.cpp's own
-# __has_include check). Real, reproduced symptom: after regenerating the
-# cache with genuinely new/changed content, `renut` relinks (its own real
-# dependency is satisfied) but `rexgpu-nativevk` reports "no work to do" and
-# keeps shipping the STALE cache baked into its already-built .so -- confirmed
-# via a real stale-vs-fresh timestamp/content mismatch, not a guess. Fixed by
+# renut_xenos_shader_batch() above only wired its DEPENDS onto `renut` (the
+# top-level executable target), not onto `rexgpu-nativevk` (the SDK-side
+# plugin .so that actually #includes the generated cache .cpp -- confirmed
+# via nativevk_xenos_pipeline_cache.cpp's own __has_include check). Symptom:
+# after regenerating the cache with new/changed content, `renut` relinks
+# (its own dependency is satisfied) but `rexgpu-nativevk` reports "no work
+# to do" and keeps shipping the STALE cache baked into its already-built
+# .so -- confirmed via a stale-vs-fresh timestamp/content mismatch. Fixed by
 # adding the same dependency directly onto rexgpu-nativevk, once it exists (it's
 # defined inside the SDK's own add_subdirectory(), which already ran by this
 # point in the file).
@@ -172,9 +170,9 @@ endif()
 # already reaches -- rex::runtime itself never actually depended on imgui.
 # Building the SDK from source (add_subdirectory/REXSDK_DIR mode) skips that
 # install step, so that flattening never happens and the true, previously-
-# masked missing dependency surfaces as `imgui.h` not found. Real fix: link
-# imgui directly, since renut is the real consumer, not through an
-# rexruntime/rexui detour that doesn't reflect renut's actual architecture.
+# masked missing dependency surfaces as `imgui.h` not found. Link imgui
+# directly, since renut is the real consumer, not through an rexruntime/rexui
+# detour that doesn't reflect renut's actual architecture.
 target_link_libraries(renut PRIVATE imgui::imgui)
 
 rexglue_setup_target(renut GPU_PLUGINS xenos nativevk)

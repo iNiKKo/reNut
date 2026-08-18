@@ -73,7 +73,7 @@ def build_constant_table(float_regs, sampler_regs, bool_regs=(), is_pixel_shader
     ConstantTableContainer, ready to append to a container's physical
     section and point constantTableOffset at).
 
-    Real fix (2026-08-17): float4 registers used to get one ConstantInfo
+    float4 registers used to get one ConstantInfo
     EACH (registerCount=1), which makes XenosRecomp emit a plain #define per
     register -- shader_recompiler.cpp's recompile() can only express real
     Xenos dynamic/relative constant addressing (`c[a0+N]`/`c[aL+N]`, used
@@ -100,7 +100,7 @@ def build_constant_table(float_regs, sampler_regs, bool_regs=(), is_pixel_shader
     are present and NOT in definition_table_regs -- still safe/indexed for
     every real run, just split at any excluded register.
     """
-    # Real fix (2026-08-17, follow-up): shader_recompiler.cpp's own
+    # shader_recompiler.cpp's own
     # `tailCount = (isPixelShader ? 224 : 256) - registerIndex` is baked
     # into the grouped macro it emits (`select((INDEX) < tailCount, ...,
     # 0.0)`) REGARDLESS of what registerCount this script declares -- so a
@@ -135,7 +135,7 @@ def build_constant_table(float_regs, sampler_regs, bool_regs=(), is_pixel_shader
             prev = reg
             continue
         if run_start is not None:
-            # Real fix: each run needs its OWN macro name -- XenosRecomp
+            # Each run needs its OWN macro name -- XenosRecomp
             # emits one `#define {name}(INDEX) ...` per ConstantInfo entry
             # processed, so two entries sharing a name would silently
             # redefine/collide instead of each covering its own real
@@ -210,7 +210,7 @@ def parse_definition_table_float_registers(data: bytes, dtbl_off: int, is_pixel_
     numbering) that this container's REAL definition table already gives a
     literal, hardcoded value to.
 
-    Real bug this exists to prevent (2026-08-16): XenosRecomp's own
+    Real bug this exists to prevent: XenosRecomp's own
     shader_recompiler.cpp (recompile(), ~line 1447) emits a LOCAL variable
     `float4 c<N> = asfloat(uint4(...))` for every register the definition
     table covers -- a real, distinct mechanism from the constant table this
@@ -313,8 +313,8 @@ def main() -> int:
             # ConstantRegisterMap's own documented semantics for this case.
             float_regs = list(range(256))
 
-        # Real fix (2026-08-16, see parse_definition_table_float_registers's
-        # own header comment): exclude any register the REAL definition
+        # See parse_definition_table_float_registers's own header
+        # comment: exclude any register the REAL definition
         # table already gives a literal value to -- adding it to the
         # synthesized constant table too creates a real `c<N>` macro/local-
         # variable naming collision, which fails DXC's compile and (since

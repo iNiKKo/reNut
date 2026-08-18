@@ -86,7 +86,7 @@ uint32_t ReadBigEndianU32(const uint8_t* p) {
   return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 
-// Real fix (2026-08-16): the compiled SPIR-V vertex shader stage declares a
+// the compiled SPIR-V vertex shader stage declares a
 // FIXED Vulkan input location per D3D9 usage/usageIndex (XenosRecomp's own
 // shader_recompiler.cpp, at the point it emits "in {type} i{var}{idx} :
 // {semantic}{idx}" for each element of VertexShader::
@@ -131,7 +131,7 @@ constexpr DeclUsageLocation kUsageLocations[] = {
 uint32_t VertexElementUsage(uint32_t raw) { return (raw >> 12) & 0xF; }
 uint32_t VertexElementUsageIndex(uint32_t raw) { return (raw >> 16) & 0xF; }
 
-// SUPERSEDED (2026-08-17) by positional location assignment in
+// SUPERSEDED by positional location assignment in
 // ExtractVertexLocations below; retained only to document the scheme this
 // build used to mirror from XenosRecomp's USAGE_LOCATIONS table.
 [[maybe_unused]] uint8_t LookUpVertexLocation(uint32_t usage, uint32_t usageIndex) {
@@ -195,7 +195,7 @@ std::array<uint8_t, kRenutMaxVertexLocations> ExtractVertexLocations(
     return locations;
   }
 
-  // Real fix (2026-08-17): locations are now POSITIONAL -- the i-th vertex
+  // locations are now POSITIONAL -- the i-th vertex
   // element gets location i -- exactly mirroring the [[vk::location(i)]]
   // XenosRecomp now emits for the same element, in the same
   // vertexElementsAndInterpolators[] order. This function and that emission
@@ -261,7 +261,7 @@ std::array<uint8_t, kRenutMaxVertexLocations> ExtractVertexTexCoordSemanticIndic
   return semanticIndices;
 }
 
-// Real fix (2026-08-16): XenosRecomp's own cache-entry hash
+// XenosRecomp's own cache-entry hash
 // (XXH3_64bits over the WHOLE container, main.cpp's
 // `XXH3_64bits(shaderContainer, dataSize)`) is NOT the same value the
 // Vulkan pipeline cache looks shaders up by at runtime -- that's
@@ -279,7 +279,7 @@ std::array<uint8_t, kRenutMaxVertexLocations> ExtractVertexTexCoordSemanticIndic
 // successfully-converted shader.
 struct RemapResult {
   std::unordered_map<uint64_t, uint64_t> hashRemap;
-  // Real fix (2026-08-16): keyed by the SAME real ucode hash hashRemap maps
+  // keyed by the SAME real ucode hash hashRemap maps
   // to (the runtime lookup key), not the container hash -- so this can be
   // applied to outEntries using the entry's ALREADY-remapped .hash field
   // directly, no second lookup needed.
@@ -475,7 +475,7 @@ int main(int argc, char** argv) {
                    "any real draw at runtime\n",
                    (unsigned long long)e.hash);
     }
-    // Real fix (2026-08-16): keyed by e.hash AFTER remapping above, since
+    // keyed by e.hash AFTER remapping above, since
     // vertexLocations was built keyed by the same real ucode hash (see
     // BuildHashRemap/RemapResult's own comments).
     auto locIt = remapResult.vertexLocations.find(e.hash);

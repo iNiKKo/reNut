@@ -3,11 +3,10 @@
 capture in shaders_ucode_hash/ (produced by the renut_dump_ucode_hash cvar,
 keyed by the real runtime ucode_data_hash() -- NOT shader_dump.cpp's D3D9-
 hook-based captures, which structurally miss most of this game's actual
-draw-time shaders; see PLAN_native_renderer.md and this session's own
-investigation: 0% overlap between shader_dump.cpp's captures and real
-`renut color draw pair` draw identities, root-caused to IM_LOAD/
+draw-time shaders (confirmed 0% overlap between shader_dump.cpp's captures
+and real `renut color draw pair` draw identities, root-caused to IM_LOAD/
 IM_LOAD_IMMEDIATE GPU command-stream shader loads that never call D3D9's
-CreateVertexShader/CreatePixelShader at all).
+CreateVertexShader/CreatePixelShader at all -- see docs/ai/research.md).
 
 Builds one synthetic ShaderContainer .bin per real .ucode file into
 OUTPUT_DIR, using the same real vertex-fetch/texture-fetch analysis
@@ -23,7 +22,7 @@ Usage:
 --reject-heuristic: skip (don't emit a container for) any vertex shader
     whose semantics needed the fallback POSITION-first/TEXCOORD-follows
     heuristic (no real captured D3D9 vertex declaration available) --
-    real fix for a real, confirmed 2026-08-16 finding: applying that
+    fix for a confirmed finding: applying that
     heuristic broadly (not just to the one shader it was originally
     verified against) produces genuinely wrong vertex data for shaders
     with different real layouts (normals, colors, multiple UV sets in a
@@ -31,7 +30,7 @@ Usage:
     ~150 heuristic-based shaders went live simultaneously. Real vertex-
     declaration capture is structurally unavailable for most of these
     shaders (same IM_LOAD root cause as shader creation itself bypassing
-    D3D9 hooks -- see PLAN_native_renderer.md), so this flag is the
+    D3D9 hooks -- see docs/ai/research.md), so this flag is the
     practical way to get a smaller but verified-correct native shader set
     instead of a larger but partially-wrong one. Pixel shaders are
     unaffected (no vertex-semantic heuristic exists for them).
@@ -87,7 +86,7 @@ def main() -> int:
         if proc.returncode == 0 and out_path.exists():
             results.append((stem, "ok"))
         elif proc.returncode == 2:
-            # Real fix (2026-08-17): build_synthetic_container.py's own
+            # build_synthetic_container.py's own
             # REJECTED line on stderr already distinguishes "no real vertex
             # declaration, --reject-heuristic given" from "references a
             # missing-literal-constant register" -- surface which one

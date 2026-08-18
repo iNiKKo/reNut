@@ -12,7 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 
-// Real fix (2026-08-16): the compiled SPIR-V's vertex shader stage declares
+// the compiled SPIR-V's vertex shader stage declares
 // FIXED Vulkan input locations per D3D9 usage/usageIndex (XenosRecomp's own
 // shader_recompiler.cpp: USAGE_LOCATIONS table, e.g. Position=0, Normal=1,
 // Tangent=2, Binormal=3, TexCoord0=4, ...) -- NOT sequential 0,1,2,... in
@@ -36,7 +36,7 @@
 // kVertexLocationUnset marks unused slots. Pixel shaders (which have no
 // vertex input stage) leave this fully unset.
 //
-// Real fix (2026-08-17): raised 16 -> 32, and the assignment rule changed
+// raised 16 -> 32, and the assignment rule changed
 // from "look the usage up in XenosRecomp's USAGE_LOCATIONS table" to "the
 // i-th vertex element gets location i". The old comment's claim that no
 // captured shader had more than ~9 attributes was measured on too small a
@@ -55,7 +55,7 @@
 inline constexpr uint32_t kRenutMaxVertexLocations = 32;
 inline constexpr uint8_t kRenutVertexLocationUnset = 0xFF;
 
-// Real fix (2026-08-17): vertexLocations[] is now purely positional (see its
+// vertexLocations[] is now purely positional (see its
 // own header comment above), so it can no longer double as "this attribute's
 // D3D9 TexCoord usage index" the way the old usage-based location scheme
 // let the runtime infer for free. XenosRecomp's own compiled HLSL still
