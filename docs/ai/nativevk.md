@@ -76,10 +76,13 @@ cmake --preset linux-amd64-relwithdebinfo -DREXSDK_DIR=/path/to/rexglue-sdk
 
 ## After that
 
-Normal build (`cmake --build --preset ...` or `ninja` from the build dir) picks up
-`rexgpu-nativevk` (the native renderer plugin) and `rexgpu-xenos` (the stock, unmodified-behavior
-plugin — useful as a clean A/B reference: set `gpu_plugin = "xenos"` in `renut.toml` to compare
-against `gpu_plugin = "nativevk"`).
+A normal build only requires `rexgpu-xenos` (`GPU_PLUGINS xenos` in reNut's own
+`CMakeLists.txt`) -- `rexgpu-configure_target()` hard-errors if a listed plugin's target
+doesn't exist, and most builds (any plain/unpatched installed SDK package included) don't
+have `rexgpu-nativevk` available, so it's deliberately not in the default list. If you've
+done the one-time setup above and want to actually build `rexgpu-nativevk`, add `nativevk`
+back to that `GPU_PLUGINS` line locally -- don't commit that change, since it breaks the
+build for anyone without a patched SDK checkout.
 
 If the patch stops applying cleanly after a rexglue-sdk update, regenerate it from a working
 tree with the fix applied: `git diff --binary > cmake/patches/rexglue_sdk_native_renderer.patch`

@@ -175,7 +175,15 @@ endif()
 # detour that doesn't reflect renut's actual architecture.
 target_link_libraries(renut PRIVATE imgui::imgui)
 
-rexglue_setup_target(renut GPU_PLUGINS xenos nativevk)
+# GPU_PLUGINS is xenos only -- rexgpu-nativevk requires a rexglue-sdk
+# checkout with cmake/patches/rexglue_sdk_native_renderer.patch applied
+# (see docs/ai/nativevk.md), which most builds (including any plain/
+# unpatched installed SDK package) don't have, and rexglue_configure_target()
+# hard-errors if a listed plugin's target doesn't exist. The native renderer
+# is being rebuilt with zero rexglue-sdk dependency (see
+# docs/ai/archive/native-renderer-rewrite-plan.md); until that lands, don't
+# require the SDK-dependent plugin for a normal build.
+rexglue_setup_target(renut GPU_PLUGINS xenos)
 target_compile_definitions(renut PRIVATE VK_ENABLE_BETA_EXTENSIONS)
 if(UNIX AND NOT APPLE)
     target_compile_definitions(renut PRIVATE VK_USE_PLATFORM_XCB_KHR)
