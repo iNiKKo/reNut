@@ -9,10 +9,27 @@
 #include "renut_engine/Timer.h"
 #include "renut_engine/Fps.h"
 #include "renut_engine/hooks.h"
+#include <rex/cvar.h>
 #include <rex/ui/window.h>
-//#include <rex/discord_rpc.h>
+#ifdef _WIN32
+#include <rex/discord_rpc.h>
+#endif
 #include <functional>
 #include <string>
+#ifndef _WIN32
+#include "renut_engine/linuxfixes/xdg_paths.h"
+// DebugHubOverlayDialog (Performance/A-B-benchmark/Native-shader tabs, see
+// debug_hub_overlay.h) resolves plugin symbols with dlopen/dlsym, which has
+// no equivalent included here for Windows yet -- keep it out of Windows
+// builds rather than add an untested LoadLibrary path. The native renderer
+// it debugs is Linux-only in practice today anyway.
+#include "renut_engine/overlays/debug_hub_overlay.h"
+
+// Defined in the SDK (src/core/logging.cpp) at global scope. When non-empty it
+// takes precedence over the exe-relative logs/ directory that rex_app.cpp would
+// otherwise hardcode.
+REXCVAR_DECLARE(std::string, log_file);
+#endif
 
 class RenutApp : public rex::ReXApp {
 public:
@@ -24,20 +41,53 @@ public:
         return std::unique_ptr<RenutApp>(new RenutApp(ctx, "renut", PPCImageConfig));
     }
 
+#ifndef _WIN32
+    // Runs before the SDK loads the config and before logging is initialised
+    // (rex_app.cpp:146), which is the only point where both destinations can
+    // still be redirected.
+    //
+    // Without this, renut writes <exe_dir>/renut.toml and <exe_dir>/logs/ --
+    // fine in a build tree, fatal inside a read-only AppImage/Flatpak mount.
+    void OnConfigurePaths(rex::PathConfig& paths) override {
+        namespace lf = renut::linuxfixes;
 
-    // void OnPostSetup() override {
-    //     rex::discord_rpc::Presence rpc;
+        // ~/.config/renut/renut.toml, migrating any existing exe-relative copy.
+        paths.config_path = lf::ResolveWithMigration(lf::ConfigDir(),
+                                                     std::string(GetName()) + ".toml");
 
-    //     rpc.details_ = "";
-    //     rpc.state_ = "";
-    //     rpc.large_image_key_ = "e242d6b6-c34e-47a1-8c2a-5297fe33bce7";
-    //     rpc.large_image_text_ = "renut";
+        // ~/.local/state/renut/logs/renut_NNN.log. Setting log_file is the only
+        // way to move the log directory, since rex_app.cpp hardcodes exe_dir/logs
+        // whenever this cvar is empty -- so we do the sequential numbering that
+        // the SDK would otherwise have done for us.
+        if (REXCVAR_GET(log_file).empty()) {
+            auto log_path = lf::NextSequentialLog(lf::LogDir(), std::string(GetName()));
+            if (!log_path.empty()) {
+                REXCVAR_SET(log_file, log_path.string());
+            }
+            // If the state dir could not be created we leave the cvar empty and
+            // let the SDK fall back to its exe-relative default.
+        }
+    }
+#endif
 
-    //     //rex::discord_rpc::Start(Application ID, Settings);
-    //     rex::discord_rpc::Start("1520303728047951892", rpc);
+     void OnPostSetup() override {
+    #ifdef _WIN32
+        rex::discord_rpc::Presence rpc;
 
-    //     rex::cvar::LoadConfig("renut.toml"); 
-    // }
+        rpc.details_ = "";
+        rpc.state_ = "";
+        rpc.large_image_key_ = "e242d6b6-c34e-47a1-8c2a-5297fe33bce7";
+        rpc.large_image_text_ = "renut";
+
+        //rex::discord_rpc::Start(Application ID, Settings);
+        rex::discord_rpc::Start("1520303728047951892", rpc);
+
+        rex::cvar::LoadConfig("renut.toml");
+    #endif
+        rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
+        rex::cvar::SetFlagByName("readback_resolve", "none");
+        rex::cvar::SetFlagByName("readback_memexport", "false");
+     }
 
     void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
         //drawer->AddDialog(new FpsOverlayDialog(drawer));
@@ -45,6 +95,9 @@ public:
         fps_dialog_->fpsManager = &fpsManager;
         drawer->AddDialog(fps_dialog_.get());
         drawer->AddDialog(new RenuLogOverlayDialog(drawer));
+#ifndef _WIN32
+        drawer->AddDialog(new DebugHubOverlayDialog(drawer));
+#endif
         path_wizard_ = new PathSetupWizard(drawer);
         drawer->AddDialog(path_wizard_);
 
@@ -63,6 +116,12 @@ public:
         const rex::PathConfig& defaults,
         std::function<void(rex::PathConfig)> resume) override
     {
+        if (!path_wizard_) {
+            RNUT_WARN("path setup wizard unavailable (no graphics/ImGui surface); "
+                      "using default paths");
+            return defaults;
+        }
+
         path_wizard_->Init(app_name_, defaults, [resume](rex::PathConfig resolved) {
             resume(resolved);
             });

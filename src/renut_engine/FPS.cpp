@@ -58,3 +58,18 @@ void FPSCounter::Tick(){
     averageFps = 1000.0f / averageMs;
 }
 
+// Hooked from config/renut_hooks.toml (frame-timing instrumentation points
+// used by the native-renderer trace panel, see trace_stats.cpp) -- currently
+// no-ops, the hooks exist so the addresses are wired for future use.
+void appMainDrawStart() {
+}
+
+void appMainDrawend() {
+}
+
+void appMainTickPreDrawStart() {
+}
+
+void appMainTickPreDrawend() {
+}
+
