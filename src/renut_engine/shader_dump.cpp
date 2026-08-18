@@ -241,7 +241,20 @@ void dumpShaderBlob(PPCRegister& r3, const char* tag)
 		realUcodeSize = ucodeSize;
 	}
 
-	const uint64_t hash = XXH3_64bits(blob, total);
+	// Real bug found+fixed (2026-08-18): this used to hash the whole blob
+	// (header+ucode, XXH3_64bits(blob, total)), NOT the same value as
+	// computeShaderUcodeHash() above or the real runtime
+	// Shader::ucode_data_hash() (pipeline_cache.cpp:
+	// XXH3_64bits(host_address, dword_count*4), ucode-only). Confirmed via
+	// direct measurement: with the old formula, 0/163 distinct vertex
+	// shaders drawn in an extended real play session ever matched anything
+	// in the native shader cache (pixel shaders, unaffected by this specific
+	// bug, matched ~96%) -- every file this function ever wrote under
+	// shaders/vs_*.bin was named/keyed by a hash nothing downstream (the
+	// native pipeline cache's runtime lookup) could ever produce again.
+	// Existing captures in shaders/ from before this fix are permanently
+	// mis-hashed and need a fresh capture session to benefit.
+	const uint64_t hash = XXH3_64bits(ucode, realUcodeSize);
 	{
 		std::lock_guard<std::mutex> lock(g_dumpMutex);
 		if (!g_dumped.insert(hash).second) return;
