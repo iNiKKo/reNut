@@ -171,9 +171,20 @@ endif()
 # Building the SDK from source (add_subdirectory/REXSDK_DIR mode) skips that
 # install step, so that flattening never happens and the true, previously-
 # masked missing dependency surfaces as `imgui.h` not found. Link imgui
-# directly, since renut is the real consumer, not through an rexruntime/rexui
-# detour that doesn't reflect renut's actual architecture.
-target_link_libraries(renut PRIVATE imgui::imgui)
+# directly in that mode, since renut is the real consumer, not through an
+# rexruntime/rexui detour that doesn't reflect renut's actual architecture.
+#
+# Guarded with if(TARGET ...): `imgui` is a local OBJECT-library target
+# defined in rexglue-sdk-src/thirdparty/CMakeLists.txt, only visible when
+# the SDK is pulled in via add_subdirectory(REXSDK_DIR). It is deliberately
+# NOT in rexglue_install.cmake's REXGLUE_INSTALL_TARGETS, so find_package(rexglue)
+# (the normal prebuilt/installed-package path most users hit, confirmed
+# 2026-08-19 via a real "target imgui::imgui not found" configure failure)
+# never has this target at all -- and per the comment above, doesn't need it,
+# since that mode's headers are already flattened by `make install`.
+if(TARGET imgui::imgui)
+    target_link_libraries(renut PRIVATE imgui::imgui)
+endif()
 
 # GPU_PLUGINS is xenos only -- rexgpu-nativevk requires a rexglue-sdk
 # checkout with cmake/patches/rexglue_sdk_native_renderer.patch applied
