@@ -10,7 +10,50 @@ Facts below marked **(verified YYYY-MM-DD)** were re-checked against the real
 tree/binaries on that date. Everything else is historical and may be stale.
 Last full audit: **2026-08-17**.
 
-## ⏭️ NEXT SESSION: START HERE — user tested bindless-heap fix, ZERO visible change
+## ⏭️ NEXT SESSION: START HERE — team fork prep + real capture-hash bug found+fixed (2026-08-18)
+
+**Two unrelated threads finished this session, read both before continuing:**
+
+**1. Team collaboration prep, DONE**: this fork's native-renderer work (rexglue-sdk diff
+reduced from ~1900 lines to a 379-line patch, one virtual hook + Vulkan device features, see
+`RENDERER_SDK_SETUP.md`) is committed on `linux-work`, ready to push to `origin` (`iNiKKo/reNut`)
+and PR against `masterspike52/reNut:Renderer` (which already has an independent, unrelated,
+overlapping native-shader effort from another contributor — reconciling that is an explicit
+team task, not done here). `resources/` (16MB personal reference PDFs) deliberately NOT
+committed — copyright/repo-bloat concern, left for the user to decide.
+
+**2. Real bug found+fixed while verifying the refactor didn't regress anything**: playtesting
+after the refactor showed the native shader debug panel had stopped appearing at all. Root cause
+(confirmed via direct measurement, not guessed): `shader_dump.cpp`'s `dumpShaderBlob()` hashed
+the WRONG byte range (header+ucode) for `shaders/vs_*.bin`/`ps_*.bin` capture filenames --
+every other real hash in the codebase (the runtime's own `Shader::ucode_data_hash()`, and this
+same file's OWN `computeShaderUcodeHash()`) hashes ucode-only. This silently broke vertex-shader
+identity tracking specifically (pixel shaders don't need the declaration-correlation this hash
+feeds, so they were unaffected) -- confirmed via an extended real play session: 0/163 distinct
+vertex shaders ever matched the native cache, pixel shaders matched ~96%. Fixed
+(`src/renut_engine/shader_dump.cpp`, commit `52a3d9c`). **Requires a fresh capture session to
+take effect** -- existing `shaders/` captures predate the fix and are permanently mis-hashed.
+
+**Status after the fix, NOT fully resolved**: rebuilt the whole pipeline from a fresh capture
+(194 real vertex shader captures with the corrected hash, 97 survived into
+`shaders_synthesized/`), but the native shader cache still only ends up with 80 real
+(non-heuristic) vertex-shader entries out of ~275 candidate containers -- most fail
+`batch_build_synthetic_containers.py`'s synthesis for reasons that look like the SAME
+pre-existing, well-documented XenosRecomp/corpus gaps already described elsewhere in this file
+(missing vertex-fetch data, missing DefinitionTable literal constants for heuristic-only IM_LOAD
+captures) -- NOT re-investigated further this session, ran out of scope. Spot-checked one very
+common, frequently-drawn real vertex shader (`vs_1638329963af0285`, real vertex bindings, no
+high float-constant registers referenced) that still doesn't make it into
+`shaders_synthesized/` despite looking like a clean candidate -- worth a direct
+`build_synthetic_container.py` invocation to see its real rejection reason, if resumed.
+
+**Next step if resumed**: play for a real, extended session (the fix is real and confirmed
+working end-to-end for shaders that DO make it into the cache) to build a bigger fresh capture
+corpus, then investigate remaining single-shader conversion failures the same way prior sessions
+did (`ucode_analyze` + direct tool invocation), rather than assuming they're already covered by
+the general "known gaps" narrative.
+
+## ⏭️ (older) user tested bindless-heap fix, ZERO visible change
 
 **2026-08-18, same day, after the fix below shipped**: user played and reported "still have
 flickering and other, nothing changed at least i didn't notice a change." This is the SAME
