@@ -49,15 +49,14 @@ include(FetchContent)
 # `git apply` on the second+ configure since the patch no longer applies cleanly to already-
 # patched source -- only apply when it actually still needs it.
 #
-# REAL BUG FOUND AND FIXED: PATCH_COMMAND is executed directly via
-# execute_process, NOT through a shell -- so a bare command string containing
-# shell operators (&&, ||, 2>/dev/null) does NOT do conditional/redirection
-# logic. Every token, including "&&", "||", "git", "apply", etc., gets passed
-# as a literal argv entry to the FIRST command (git), which git then rejects
-# or silently misinterprets -- so the patch was NEVER actually applied by this
-# line despite `git apply --check` succeeding when run by hand. Fixed by
-# routing the whole idempotent-apply logic through `sh -c` so the shell
-# operators are interpreted as intended.
+# PATCH_COMMAND is executed directly via execute_process, NOT through a
+# shell -- a bare command string containing shell operators (&&, ||,
+# 2>/dev/null) does NOT do conditional/redirection logic; every token gets
+# passed as a literal argv entry to the first command instead. The
+# idempotent check-then-apply logic lives in apply_xenosrecomp_patch.cmake
+# (a portable CMake script, not `sh -c ...`) so it works the same on Windows
+# as everywhere else -- `sh` is not on PATH by default there, which broke
+# the whole FetchContent populate step.
 #
 # xenosrecomp_native_renderer.patch SUPERSEDES the old
 # xenosrecomp_graceful_skip.patch (deleted) -- it is that same patch's full
@@ -76,7 +75,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/hedge-dev/XenosRecomp.git
     GIT_TAG main
     GIT_SUBMODULES_RECURSE ON
-    PATCH_COMMAND sh -c "git apply --check '${CMAKE_CURRENT_LIST_DIR}/patches/xenosrecomp_native_renderer.patch' 2>/dev/null && git apply '${CMAKE_CURRENT_LIST_DIR}/patches/xenosrecomp_native_renderer.patch' || true"
+    PATCH_COMMAND ${CMAKE_COMMAND}
+        "-DPATCH_FILE=${CMAKE_CURRENT_LIST_DIR}/patches/xenosrecomp_native_renderer.patch"
+        -P "${CMAKE_CURRENT_LIST_DIR}/apply_xenosrecomp_patch.cmake"
 )
 FetchContent_MakeAvailable(xenosrecomp)
 
