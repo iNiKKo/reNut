@@ -13,6 +13,21 @@ recompilation ships and is stable. GPU has two interchangeable plugins: `rexgpu-
 (experimental, statically-compiled pipelines, in progress). If you need more than that,
 go to [`research.md`](research.md).
 
+**Planned architecture change (decided, not yet started):** `rexgpu-nativevk` as
+described above and in `nativevk.md` is going away. It still substitutes pipelines
+from inside rexglue-sdk's own draw call (`VulkanCommandProcessor::IssueDraw`), which
+means it still depends on the SDK's GPU-emulation stack (texture cache, render-target
+cache, shared memory, primitive processor) to get there, even though its own source
+lives outside the SDK checkout. The decided direction is a full replacement:
+UnleashedRecomp-style, hooking the game's D3D9 calls directly at their guest addresses
+and implementing Vulkan rendering entirely independently, with zero dependency on
+rexglue-sdk's rendering pipeline at all. See
+[`archive/native-renderer-rewrite-plan.md`](archive/native-renderer-rewrite-plan.md)
+for the real plan (existing groundwork already found: every D3D9 entry point needed
+already has a known guest address, and `render_hooks_stub.cpp` has a matching orphaned
+stub scaffold). Until that lands, treat everything below about `rexgpu-nativevk` as
+current-but-temporary, not the end state.
+
 ## Hard rules
 
 1. **rexglue-sdk lives outside this repo and should almost never need real edits.**

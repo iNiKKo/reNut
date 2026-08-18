@@ -17,7 +17,27 @@ Facts below marked **(verified YYYY-MM-DD)** were re-checked against the real
 tree/binaries on that date. Everything else is historical and may be stale.
 Last full audit: **2026-08-17**.
 
-## ⏭️ NEXT SESSION: START HERE — team fork prep + real capture-hash bug found+fixed (2026-08-18)
+## ⏭️ NEXT SESSION: START HERE — native renderer is getting fully rewritten, SDK-independent (2026-08-18)
+
+Decided (not started): `rexgpu-nativevk` as described everywhere below this point is
+being replaced entirely with an UnleashedRecomp-style renderer that hooks the game's
+D3D9 calls directly and never touches rexglue-sdk's GPU-emulation pipeline at all — not
+even from inside its own draw call, which is what the current architecture still does
+despite living outside the SDK checkout. Real plan, with existing groundwork already
+identified (every D3D9 entry point's guest address is already known; an orphaned stub
+scaffold in `render_hooks_stub.cpp` already matches the shape needed):
+`archive/native-renderer-rewrite-plan.md`. Read that before doing ANY native-renderer
+work — everything else in this file and in `nativevk.md` describes the current,
+temporary architecture, not the target.
+
+Also done this session: opened a real PR branch (`nativevk-on-renderer`, pushed to
+`origin`) built on `masterspike52/reNut:Renderer`'s actual git history — `linux-work`
+(referenced throughout this file below) turned out to have zero shared ancestry with
+upstream at all, so it could never have merged cleanly. All 24 overlapping files were
+hand-reconciled (see that branch's own commits for the reasoning per file), not
+bulk-overwritten.
+
+## Team fork prep + real capture-hash bug found+fixed (2026-08-18)
 
 **Two unrelated threads finished this session, read both before continuing:**
 

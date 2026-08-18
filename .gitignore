@@ -21,3 +21,5 @@ __pycache__/
 # Working/planning docs -- local reference only, not for the fork.
 docs/ai/archive/deferred-vfetch-flush.md
 docs/ai/archive/native-renderer-plan.md
+docs/ai/archive/native-renderer-rewrite-plan.md
+docs/ai/archive/pr-description-renderer.md

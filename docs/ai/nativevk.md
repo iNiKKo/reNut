@@ -6,6 +6,16 @@
 > `src/graphics/nativevk/`. If you're not working on the renderer, skip to
 > [`../START_HERE.md`](../START_HERE.md).
 
+**This entire architecture is being replaced (decided, not started).** Even though
+`rexgpu-nativevk`'s own source lives outside the SDK checkout, it still substitutes a
+pipeline from *inside* rexglue-sdk's own draw call, so it still depends on the SDK's
+GPU-emulation stack to get there. The decided direction is a full, UnleashedRecomp-style
+rewrite with zero dependency on rexglue-sdk's rendering pipeline — see
+[`archive/native-renderer-rewrite-plan.md`](archive/native-renderer-rewrite-plan.md) for
+the real plan. Everything below describes the current, temporary architecture — accurate
+today, but not the target. Once the rewrite starts, this file gets replaced rather than
+patched.
+
 ## Hard rule: rexglue-sdk itself should not need to be edited
 
 The lead rexglue developer's stated architecture: fixes/features belong in reNut's own
