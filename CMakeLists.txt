@@ -124,13 +124,13 @@ endif()
 # `dump_guest_shaders`, hundreds of real Banjo shaders) to compiled SPIR-V,
 # isolating crash-prone shaders per-subprocess so they're skipped instead of
 # aborting the whole cache (see tools/xenos_batch_convert.py). Consumed by
-# rexgpu-renut (src/graphics/CMakeLists.txt in the SDK checkout) via a
+# rexgpu-nativevk (src/graphics/CMakeLists.txt in the SDK checkout) via a
 # deterministic path check, NOT a normal target_sources() call -- that SDK
 # CMakeLists is processed by include(generated/rexglue.cmake) ABOVE, i.e.
 # before this custom command exists in the build graph, so a completely
 # fresh checkout needs ONE EXTRA reconfigure after the cache is first
 # generated (`cmake --build . --target renut_xenos_shader_batch` or just a
-# normal build followed by re-running cmake) before rexgpu-renut picks it up
+# normal build followed by re-running cmake) before rexgpu-nativevk picks it up
 # -- same two-step pattern renut_xenos_shader() above already requires for
 # its single-shader HLSL output.
 #
@@ -151,18 +151,18 @@ endif()
 
 # Real bug found+fixed 2026-08-16: renut_xenos_shader_batch() above only wired
 # its DEPENDS onto `renut` (the top-level executable target), not onto
-# `rexgpu-renut` (the SDK-side plugin .so that actually #includes the
+# `rexgpu-nativevk` (the SDK-side plugin .so that actually #includes the
 # generated cache .cpp -- confirmed via renut_xenos_pipeline_cache.cpp's own
 # __has_include check). Real, reproduced symptom: after regenerating the
 # cache with genuinely new/changed content, `renut` relinks (its own real
-# dependency is satisfied) but `rexgpu-renut` reports "no work to do" and
+# dependency is satisfied) but `rexgpu-nativevk` reports "no work to do" and
 # keeps shipping the STALE cache baked into its already-built .so -- confirmed
 # via a real stale-vs-fresh timestamp/content mismatch, not a guess. Fixed by
-# adding the same dependency directly onto rexgpu-renut, once it exists (it's
+# adding the same dependency directly onto rexgpu-nativevk, once it exists (it's
 # defined inside the SDK's own add_subdirectory(), which already ran by this
 # point in the file).
-if(TARGET rexgpu-renut AND TARGET renut_xenos_shader_batch)
-    add_dependencies(rexgpu-renut renut_xenos_shader_batch)
+if(TARGET rexgpu-nativevk AND TARGET renut_xenos_shader_batch)
+    add_dependencies(rexgpu-nativevk renut_xenos_shader_batch)
 endif()
 
 # renut's own sources (FPS.cpp, mnk_controls.cpp, renut_logging_overlay.h,
@@ -177,7 +177,7 @@ endif()
 # rexruntime/rexui detour that doesn't reflect renut's actual architecture.
 target_link_libraries(renut PRIVATE imgui::imgui)
 
-rexglue_setup_target(renut GPU_PLUGINS xenos renut)
+rexglue_setup_target(renut GPU_PLUGINS xenos nativevk)
 target_compile_definitions(renut PRIVATE VK_ENABLE_BETA_EXTENSIONS)
 if(UNIX AND NOT APPLE)
     target_compile_definitions(renut PRIVATE VK_USE_PLATFORM_XCB_KHR)

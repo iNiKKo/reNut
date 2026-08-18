@@ -15,12 +15,39 @@ Last full audit: **2026-08-17**.
 **Two unrelated threads finished this session, read both before continuing:**
 
 **1. Team collaboration prep, DONE**: this fork's native-renderer work (rexglue-sdk diff
-reduced from ~1900 lines to a 379-line patch, one virtual hook + Vulkan device features, see
+reduced from ~1900 lines to a small patch, one virtual hook + Vulkan device features, see
 `RENDERER_SDK_SETUP.md`) is committed on `linux-work`, ready to push to `origin` (`iNiKKo/reNut`)
-and PR against `masterspike52/reNut:Renderer` (which already has an independent, unrelated,
-overlapping native-shader effort from another contributor — reconciling that is an explicit
-team task, not done here). `resources/` (16MB personal reference PDFs) deliberately NOT
-committed — copyright/repo-bloat concern, left for the user to decide.
+and PR against `masterspike52/reNut:Renderer`. **Plugin renamed** (2026-08-18, user request --
+"renut" was confusing next to the project's own name): `gpu_plugin = "renut"` ->
+`gpu_plugin = "nativevk"`, CMake target `rexgpu-renut` -> `rexgpu-nativevk`,
+`src/graphics/renut/` -> `src/graphics/nativevk/` (SDK side), `renut_xenos_pipeline_cache.*` ->
+`nativevk_xenos_pipeline_cache.*`, `renut_phase1_native_draw.*` -> `nativevk_phase1_native_draw.*`,
+`renut_shader_debug_panel.cpp` -> `nativevk_shader_debug_panel.cpp`,
+`RenutCommandProcessor`/`RenutGraphicsSystem` -> `NativeVkCommandProcessor`/
+`NativeVkGraphicsSystem`, `RENUT_OPTIMISATIONS` -> `NATIVEVK_OPTIMISATIONS`. Deliberately NOT
+renamed (genuinely project-level, not plugin-specific): `config/renut_hooks.toml`,
+`renut_config.toml`, `src/renut_engine/*`, the generated `renut_xenos_shader_cache.h`/`.cpp` and
+its `renut_xenos_shader_batch()`/`renut_synthesize_*()` CMake functions (shared build-pipeline
+naming, not the plugin itself). Live config (`~/.config/renut/renut.toml`) already updated to
+`gpu_plugin = "nativevk"`. Rebuilt and verified end-to-end (both `rexgpu-nativevk` and
+`rexgpu-xenos` link cleanly, deployed, md5-verified).
+
+**CORRECTION (2026-08-18, later same day)**: an earlier note in this file claimed
+`upstream/Renderer` already has "an independent, unrelated, overlapping native-shader effort
+from another contributor" -- **this was wrong**, based on a misread `git diff --stat` (files
+that only exist on `linux-work` were misattributed as also existing on `Renderer` with
+different content). Directly verified via `git cat-file -e` on both branches: `Renderer` has
+**zero** native-shader-conversion files (no `tools/`, no `ucode_analyze.cpp`, no
+`renut_xenos_shader_cache.h`, nothing under `cmake/patches/`) -- it's a smaller, differently
+scoped branch (FPS overlay, mouse/keyboard controls, texture tools, general engine/gameplay
+fixes). This means every native-renderer file merges into `Renderer` as a pure, zero-conflict
+addition. The real (normal, expected) merge-conflict surface is the ~33 files that exist on
+both branches -- mostly core engine/build files each branch touched independently
+(`CMakeLists.txt`, `config/renut_hooks.toml`, `src/renut_engine/shader_dump.cpp`,
+`src/renut_app.h`, `src/renut_engine/hooks.cpp`, etc.), with moderate, normal divergence (tens
+to a few hundred changed lines each), not a duplicate-effort collision. `resources/` (16MB
+personal reference PDFs) deliberately NOT committed -- copyright/repo-bloat concern, left for
+the user to decide.
 
 **2. Real bug found+fixed while verifying the refactor didn't regress anything**: playtesting
 after the refactor showed the native shader debug panel had stopped appearing at all. Root cause
