@@ -2,7 +2,7 @@
 
 #include <mutex>
 
-#include <rex/graphics/vulkan/renut_trace_hook.h>
+#include "renut_engine/renut_trace_hook.h"
 
 namespace renut::trace_stats {
 

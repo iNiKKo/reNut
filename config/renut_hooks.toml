@@ -310,6 +310,44 @@ name = "dumpVertexDeclarationSet_hook"
 registers = ["r3", "r4"]
 after_instruction = false
 
+# Phase 0 of the SDK-independent native renderer rewrite (see
+# docs/ai/archive/native-renderer-rewrite-plan.md and nativevk_phase0.cpp):
+# read-only draw-count validation on the four real D3D9 draw entry points
+# (config/renut_gpu_funcs.toml). No register values needed, just call counts.
+[[midasm_hook]]
+address = 0x8222C7A0
+name = "phase0DrawVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x826567C8
+name = "phase0DrawIndexedVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222E520
+name = "phase0DrawVerticesUP_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82656728
+name = "phase0DrawIndexedVerticesUP_hook"
+registers = []
+after_instruction = false
+
+# Second, independent hook at the SAME address as dumpVertexShaderSet_hook
+# above -- deliberately not reusing that one, since it's gated behind the
+# unrelated renut_dump_vertex_decl cvar (see nativevk_phase0.cpp's own
+# comment on phase0SetVertexShader_hook for why).
+[[midasm_hook]]
+address = 0x8222A0A8
+name = "phase0SetVertexShader_hook"
+registers = ["r3", "r4"]
+after_instruction = false
+
 [[midasm_hook]]
 address = 0x822469D0
 name = "gameActivityAnimationStream"

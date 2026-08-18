@@ -44,6 +44,7 @@ set(RENUT_SOURCES
     src/renut_engine/FPS.cpp
     src/renut_engine/game_activity_stats.cpp
     src/renut_engine/render_hooks_stub.cpp
+    src/renut_engine/nativevk_phase0.cpp
     src/renut_engine/trace_stats.cpp
     src/renut_engine/shader_dump.cpp
     src/renut_engine/texture_tools.cpp
@@ -218,9 +219,11 @@ if(UNIX AND NOT APPLE)
 
     # Same mechanism, for RenutEmitTraceRow (src/renut_engine/trace_stats.cpp):
     # the nativevk/xenos plugin calls this weak hook (see
-    # rex/graphics/vulkan/renut_trace_hook.h in the SDK) once per frame with
-    # timing data for the "Renderer performance" overlay. extern "C" means no
-    # mangled name to keep in sync here.
+    # src/renut_engine/renut_trace_hook.h -- reNut's own copy of the SDK-side
+    # header of the same name, kept byte-identical; see that file's own
+    # comment for why it isn't just #include'd from the SDK checkout) once
+    # per frame with timing data for the "Renderer performance" overlay.
+    # extern "C" means no mangled name to keep in sync here.
     target_link_options(renut PRIVATE
         "-Wl,--export-dynamic-symbol=RenutEmitTraceRow")
 

@@ -2,6 +2,7 @@
 #include "Fps.h"
 #include <renut_engine/hooks.h>
 #include <renut_engine/Timer.h>
+#include <renut_engine/nativevk_phase0.h>
 #include <rex/hook.h>
 
 //CPU Time
@@ -59,12 +60,18 @@ void FPSCounter::Tick(){
 }
 
 // Hooked from config/renut_hooks.toml (frame-timing instrumentation points
-// used by the native-renderer trace panel, see trace_stats.cpp) -- currently
-// no-ops, the hooks exist so the addresses are wired for future use.
+// used by the native-renderer trace panel, see trace_stats.cpp). Also the
+// real per-frame boundary for nativevk_phase0's D3D9-hook draw-count
+// validation (docs/ai/archive/native-renderer-rewrite-plan.md Phase 0) --
+// this wraps the guest's ENTIRE draw submission (REX_HOOK_RAW(appMainDraw)
+// above), matching exactly what the SDK's own real "draws" trace stat
+// (trace_stats.cpp) is scoped to, so the two counts are directly comparable.
 void appMainDrawStart() {
+    renut::nativevk_phase0::FrameStart();
 }
 
 void appMainDrawend() {
+    renut::nativevk_phase0::FrameEnd();
 }
 
 void appMainTickPreDrawStart() {

@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "renut_engine/Fps.h"
 #include "renut_engine/game_activity_stats.h"
+#include "renut_engine/nativevk_phase0.h"
 #include "renut_engine/trace_stats.h"
 
 // Content-only: no window/Begin/End, no hotkey. Hosted as a tab inside
@@ -83,6 +84,36 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
     Count(trace, "Small-target submissions", "smallrt");
     ImGui::TextDisabled("The last five categories can overlap; they are not summed.");
     ImGui::TextDisabled("Objects culled before draw submission need a game visibility-manager hook.");
+    ImGui::Separator();
+    ImGui::TextUnformatted("Phase 0: D3D9-hook rewrite validation");
+    ImGui::TextDisabled("docs/ai/archive/native-renderer-rewrite-plan.md -- is D3D9-hook coverage");
+    ImGui::TextDisabled("close to the real draw count, and are shader handles resolvable?");
+    {
+        const auto phase0 = renut::nativevk_phase0::GetLatest();
+        ImGui::Text("%-28s %7llu", "D3D9-hook draws (last frame)",
+            static_cast<unsigned long long>(phase0.last_frame_draws));
+        if (Has(trace, "draws")) {
+            const double sdkDraws = Value(trace, "draws");
+            const double ratio = sdkDraws > 0.0 ? double(phase0.last_frame_draws) / sdkDraws * 100.0 : 0.0;
+            ImGui::Text("%-28s %6.1f %%  (%.0f real)", "...as %% of SDK draws", ratio, sdkDraws);
+        } else {
+            Unmeasured("...as % of SDK draws");
+        }
+        ImGui::Text("%-28s %7llu", "SetVertexShader calls (session)",
+            static_cast<unsigned long long>(phase0.session_set_vertex_shader_calls));
+        const double unresolvedPct = phase0.session_set_vertex_shader_calls > 0
+            ? double(phase0.session_unresolved_set_vertex_shader_calls) / double(phase0.session_set_vertex_shader_calls) * 100.0
+            : 0.0;
+        ImGui::Text("%-28s %7llu  (%.1f %%)", "...unresolved calls",
+            static_cast<unsigned long long>(phase0.session_unresolved_set_vertex_shader_calls), unresolvedPct);
+        ImGui::Text("%-28s %7llu", "Distinct handles (session)",
+            static_cast<unsigned long long>(phase0.session_distinct_handles_seen));
+        ImGui::Text("%-28s %7llu", "...distinct unresolved",
+            static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
+        ImGui::TextDisabled("Unresolved = SetVertexShader handle never seen at CreateVertexShader");
+        ImGui::TextDisabled("(the known IM_LOAD-bypass risk) -- resolvable via ucode-hash correlation");
+        ImGui::TextDisabled("only if the shader DID go through CreateVertexShader at some point.");
+    }
     if (ImGui::CollapsingHeader("All trace timings")) {
         Time(trace, "Primary buffer execution", "execprimary_ms");
         Time(trace, "GPU thread idle", "stall_ms");

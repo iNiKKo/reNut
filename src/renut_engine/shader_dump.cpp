@@ -4,6 +4,7 @@
 #include <rex/hash.h>
 #include <rex/runtime.h>
 #include "renut_logging.h"
+#include "renut_engine/shader_dump.h"
 
 #include <algorithm>
 #include <array>
@@ -464,10 +465,16 @@ void dumpVertexDeclarationCreated_hook(PPCRegister& r3)
 // is about to allocate and return. Independent of dumpVertexShader_hook's
 // own dump_guest_shaders gate: this needs to run whenever
 // renut_dump_vertex_decl is on, even if dump_guest_shaders is off.
+// Real, deliberate change (see docs/ai/archive/native-renderer-rewrite-plan.md
+// Phase 0): this used to early-return unless renut_dump_vertex_decl was
+// enabled, same as the rest of this file's dump-to-disk paths. But this
+// function (and dumpVertexShaderCreated_hook below) only computes a hash and
+// inserts into a map -- no I/O -- and renut::shader_dump::TryResolveShaderUcodeHash
+// (used by nativevk_phase0.cpp to measure real IM_LOAD-bypass rate) needs
+// g_shaderHandleToUcodeHash populated unconditionally, not only when a user
+// happens to have the unrelated vertex-decl-dump feature enabled.
 void dumpVertexShaderCreate_hook(PPCRegister& r3)
 {
-	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
-
 	uint64_t ucodeHash = 0;
 	if (!computeShaderUcodeHash(r3.u32, ucodeHash)) return;
 
@@ -482,8 +489,6 @@ void dumpVertexShaderCreate_hook(PPCRegister& r3)
 // with the ucode hash computed at entry above.
 void dumpVertexShaderCreated_hook(PPCRegister& r3)
 {
-	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
-
 	const uint32_t handle = r3.u32;
 	if (handle < 0x10000000u || handle >= 0x90000000u) return;
 
@@ -628,6 +633,18 @@ uint64_t resolveShaderUcodeHash(uint32_t handle)
 }
 
 }  // namespace
+
+namespace renut::shader_dump {
+
+bool TryResolveShaderUcodeHash(uint32_t handle, uint64_t& outHash)
+{
+	const uint64_t hash = resolveShaderUcodeHash(handle);
+	if (hash == 0) return false;
+	outHash = hash;
+	return true;
+}
+
+}  // namespace renut::shader_dump
 
 void dumpVertexShaderSet_hook(PPCRegister& r3, PPCRegister& r4)
 {
