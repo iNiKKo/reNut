@@ -10,6 +10,21 @@ project(renut LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# src/core/memory.cpp (byte-swap intrinsics, in rexglue-sdk) uses
+# _mm_shuffle_epi8 unconditionally, with no runtime CPU-feature dispatch --
+# it has always required SSSE3 at compile time. The prebuilt/extracted SDK
+# package this project normally uses was built on a toolchain whose default
+# target baseline already included SSSE3, which silently masked the missing
+# flag; building the SDK from source directly on a baseline x86-64 target
+# (no implied SSSE3) surfaces it as a real "always_inline function requires
+# target feature" compile error. Set from here (before add_subdirectory()
+# pulls the SDK in below) rather than editing rexglue-sdk's own
+# CMakeLists.txt, since add_compile_options() propagates into subdirectories
+# added afterward.
+if(NOT WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
+    add_compile_options(-mssse3)
+endif()
+
 include(generated/rexglue.cmake)
 
 # Native-renderer shader pipeline (see PLAN_native_renderer.md). Fetches
