@@ -17,25 +17,61 @@ Facts below marked **(verified YYYY-MM-DD)** were re-checked against the real
 tree/binaries on that date. Everything else is historical and may be stale.
 Last full audit: **2026-08-17**.
 
-## ⏭️ NEXT SESSION: START HERE — native renderer is getting fully rewritten, SDK-independent (2026-08-18)
+## ⏭️ NEXT SESSION: START HERE — start Phase 0 of the SDK-independent native renderer rewrite (2026-08-19)
 
-Decided (not started): `rexgpu-nativevk` as described everywhere below this point is
-being replaced entirely with an UnleashedRecomp-style renderer that hooks the game's
-D3D9 calls directly and never touches rexglue-sdk's GPU-emulation pipeline at all — not
-even from inside its own draw call, which is what the current architecture still does
-despite living outside the SDK checkout. Real plan, with existing groundwork already
-identified (every D3D9 entry point's guest address is already known; an orphaned stub
-scaffold in `render_hooks_stub.cpp` already matches the shape needed):
-`archive/native-renderer-rewrite-plan.md`. Read that before doing ANY native-renderer
-work — everything else in this file and in `nativevk.md` describes the current,
-temporary architecture, not the target.
+**The rewrite is decided and fully planned, but implementation has not started at all.**
+Read `archive/native-renderer-rewrite-plan.md` in full before writing any native-renderer
+code -- it has the phased rollout, the known groundwork that already carries over
+(every D3D9 guest address already known, XenosRecomp pipeline untouched, vertex-fetch
+decode / bindless-heap / constant-buffer techniques already proven), and the one real
+open risk that must be validated FIRST (Phase 0): does hooking D3D9 draw calls directly
+actually see ~100% of real draws, and is shader identity resolvable for shaders that
+bypass `CreateVertexShader` via IM_LOAD. Do not skip Phase 0 and jump to writing
+renderer code -- if it fails, the approach needs to change before anything else is built.
 
-Also done this session: opened a real PR branch (`nativevk-on-renderer`, pushed to
-`origin`) built on `masterspike52/reNut:Renderer`'s actual git history — `linux-work`
-(referenced throughout this file below) turned out to have zero shared ancestry with
-upstream at all, so it could never have merged cleanly. All 24 overlapping files were
-hand-reconciled (see that branch's own commits for the reasoning per file), not
-bulk-overwritten.
+Everything else in this file and in `nativevk.md` describes the CURRENT, SDK-dependent
+`rexgpu-nativevk` architecture -- accurate today, but explicitly being replaced, not the
+target. `rexgpu-nativevk` is still fully present in the repo (patch file, SDK-side files,
+debug panel), just no longer required for a normal build (see below) -- full removal is
+its own later step once the new renderer has something to replace it with.
+
+**PR status**: `nativevk-on-renderer` branch, pushed to `origin`, open as PR #38 against
+`masterspike52/reNut:Renderer`, mergeable clean. Built on Renderer's real git history
+(`linux-work`, referenced throughout this file below, had zero shared ancestry with
+upstream at all and could never have merged cleanly -- see that branch's own commits for
+how the 24 overlapping files were hand-reconciled, not bulk-overwritten). Per the repo
+owner's explicit request: `mullhwucrash.cpp` was reverted back to byte-identical with
+Renderer/main (the real `simde_mm_blendv_ps`->`_epi8` bug fix found this session was
+dropped from the PR -- owner didn't want already-functioning shared files touched).
+Everything else (Linux fixes, debug panel, NativeVK scaffolding, `sleep.h`'s real
+`PPC_HOOK`->`REX_HOOK` fix) stayed in one combined PR, per the owner's explicit request
+not to split it into separate branches.
+
+**Two real build-breaking bugs found+fixed via the owner's own build attempts**:
+1. `cmake/rexglue_xenosrecomp.cmake`'s `PATCH_COMMAND sh -c "..."` doesn't work on
+   Windows (`sh` not on PATH) -- replaced with a portable CMake script
+   (`cmake/apply_xenosrecomp_patch.cmake`), verified against the real XenosRecomp
+   checkout (both fresh-apply and already-applied paths).
+2. `rexgpu-nativevk` was in the default `GPU_PLUGINS` list, so ANY normal build without
+   a manually-patched SDK checkout (i.e. everyone using a plain/prebuilt SDK install,
+   including the owner) hard-failed at configure with "unknown GPU plugin 'nativevk'".
+   Fixed by dropping `nativevk` from the default list in reNut's own `CMakeLists.txt` --
+   `rexgpu-xenos` only now; `nativevk` stays buildable locally by re-adding it after the
+   one-time SDK patch setup in `nativevk.md`, just not required by default.
+
+Also found (SDK-side, real, worth keeping in the patch): `rex_resolve_version()` in
+rexglue-sdk's own `CMakeLists.txt` didn't pass `SOURCE_DIR`, so in `add_subdirectory()`/
+`REXSDK_DIR` mode it ran `git describe` against reNut's OWN repo (which has an unrelated
+`v1.1.0` tag) instead of the SDK checkout -- caused a spurious "floor version behind tag
+version" hard error. Fixed with an explicit `SOURCE_DIR` argument.
+
+Also done: cleaned ~90+ narrative/session-dated comments ("Real fix (2026-08-17,
+user-requested): ...") out of the native-renderer code across this repo and the SDK
+patch -- see that commit for what was deliberately left alone (`xenosrecomp_native_renderer.patch`,
+since the separate XenosRecomp checkout it's built from has real unverified functional
+changes sitting in it, unrelated to this cleanup). Added `docs/ai/MIGRATION.md` -- the
+generalized process for bringing any project onto `Renderer` cleanly, based on exactly
+what this session actually did.
 
 ## Team fork prep + real capture-hash bug found+fixed (2026-08-18)
 
