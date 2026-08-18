@@ -3,16 +3,7 @@
 #include <fstream>
 #include <optional>
 #include <string>
-
-#ifdef _WIN32
 #include <windows.h>
-#else
-#include <climits>
-#include <unistd.h>
-// Keeps the .cfg out of the executable's directory so renut still works when
-// installed read-only (AppImage/Flatpak/system install). See that header.
-#include "linuxfixes/xdg_paths.h"
-#endif
 
 namespace PathConfigStore {
 
@@ -40,19 +31,10 @@ namespace PathConfigStore {
     }
 
     inline std::filesystem::path GetStorePath(const std::string& app_name) {
-#ifdef _WIN32
         wchar_t exe_path[MAX_PATH] = {};
         GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
         std::filesystem::path dir = std::filesystem::path(exe_path).parent_path();
-#else
-        // ~/.config/renut/<app>.cfg, migrating an existing file from beside the
-        // executable on first use so current setups keep their asset paths.
-        return renut::linuxfixes::ResolveWithMigration(renut::linuxfixes::ConfigDir(),
-                                                       app_name + ".cfg");
-#endif
-#ifdef _WIN32
         return dir / (app_name + ".cfg");
-#endif
     }
 
     inline std::optional<SavedPaths> TryLoad(const std::string& app_name) {
