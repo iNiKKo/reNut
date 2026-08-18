@@ -36,7 +36,7 @@ FLAGS="-std=gnu++23 -fsyntax-only
 -Ithirdparty/vulkan-memory-allocator/include -Ithirdparty/xxHash -Ithirdparty/snappy
 -Ithirdparty/simde -Ithirdparty/tracy/public -Ithirdparty/tomlplusplus/include
 -Ithirdparty/utfcpp/source -Ithirdparty/disruptorplus/include
--Ithirdparty/glslang -Ithirdparty/glslang/glslang/Include"
+-Ithirdparty/glslang -Ithirdparty/glslang/glslang/Include -Ithirdparty/imgui"
 
 # Both configurations must build: the renut plugin defines RENUT_OPTIMISATIONS,
 # xenos does not, and code inside #if blocks is only checked in one of them.

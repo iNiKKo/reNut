@@ -109,6 +109,7 @@ int main(int argc, char** argv) {
 	std::printf("  \"shader_type\": %s,\n", is_vertex ? "\"vs\"" : "\"ps\"");
 	std::printf("  \"writes_interpolators\": %u,\n", shader.writes_interpolators());
 	std::printf("  \"writes_color_targets\": %u,\n", shader.writes_color_targets());
+	std::printf("  \"writes_depth\": %s,\n", shader.writes_depth() ? "true" : "false");
 
 	std::printf("  \"vertex_bindings\": [\n");
 	const auto& vbindings = shader.vertex_bindings();
@@ -122,7 +123,6 @@ int main(int argc, char** argv) {
 		for (size_t j = 0; j < vb.attributes.size(); ++j) {
 			const auto& fi = vb.attributes[j].fetch_instr;
 			std::printf("        {\n");
-			std::printf("          \"instruction_address\": %u,\n", fi.instruction_address);
 			std::printf("          \"data_format\": %u,\n", uint32_t(fi.attributes.data_format));
 			std::printf("          \"data_format_name\": ");
 			PrintJsonString(VertexFormatName(fi.attributes.data_format));
@@ -130,7 +130,10 @@ int main(int argc, char** argv) {
 			std::printf("          \"offset_words\": %d,\n", fi.attributes.offset);
 			std::printf("          \"stride_words\": %u,\n", fi.attributes.stride);
 			std::printf("          \"is_signed\": %s,\n", fi.attributes.is_signed ? "true" : "false");
-			std::printf("          \"is_integer\": %s\n", fi.attributes.is_integer ? "true" : "false");
+			std::printf("          \"is_integer\": %s,\n", fi.attributes.is_integer ? "true" : "false");
+			std::printf("          \"exp_adjust\": %d,\n", fi.attributes.exp_adjust);
+			std::printf("          \"signed_rf_mode\": %u,\n", uint32_t(fi.attributes.signed_rf_mode));
+			std::printf("          \"is_mini_fetch\": %s\n", fi.is_mini_fetch ? "true" : "false");
 			std::printf("        }%s\n", (j + 1 < vb.attributes.size()) ? "," : "");
 		}
 		std::printf("      ]\n");
@@ -156,6 +159,7 @@ int main(int argc, char** argv) {
 		std::printf("    {\n");
 		std::printf("      \"binding_index\": %zu,\n", tb.binding_index);
 		std::printf("      \"fetch_constant\": %u,\n", tb.fetch_constant);
+		std::printf("      \"dimension\": %u,\n", uint32_t(tb.fetch_instr.dimension));
 		if (has_src_reg) {
 			std::printf("      \"src_register\": %u\n", src_reg);
 		} else {
@@ -163,7 +167,35 @@ int main(int argc, char** argv) {
 		}
 		std::printf("    }%s\n", (i + 1 < tbindings.size()) ? "," : "");
 	}
-	std::printf("  ]\n");
+	std::printf("  ],\n");
+
+	std::printf("  \"float_constants\": [");
+	const auto& cmap = shader.constant_register_map();
+	bool first_const = true;
+	for (uint32_t reg = 0; reg < 256; ++reg) {
+		uint32_t block_index = reg / 64;
+		uint32_t bit_index = reg % 64;
+		if (cmap.float_bitmap[block_index] & (uint64_t(1) << bit_index)) {
+			std::printf("%s%u", first_const ? "" : ", ", reg);
+			first_const = false;
+		}
+	}
+	std::printf("],\n");
+	std::printf("  \"float_dynamic_addressing\": %s,\n",
+	             cmap.float_dynamic_addressing ? "true" : "false");
+
+	std::printf("  \"bool_constants\": [");
+	bool first_bool = true;
+	for (uint32_t reg = 0; reg < 256; ++reg) {
+		uint32_t block_index = reg / 32;
+		uint32_t bit_index = reg % 32;
+		if (cmap.bool_bitmap[block_index] & (uint32_t(1) << bit_index)) {
+			std::printf("%s%u", first_bool ? "" : ", ", reg);
+			first_bool = false;
+		}
+	}
+	std::printf("]\n");
+
 	std::printf("}\n");
 	return 0;
 }

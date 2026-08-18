@@ -19,7 +19,7 @@ SDK="${SDK_SRC:-/home/nick/Desktop/reNut-build-scratch/rexglue-sdk-src}"
 OUT="${1:-/tmp/ucode_analyze}"
 
 cd "$SDK"
-g++ -std=gnu++23 -O2 -mssse3 \
+g++ -std=gnu++23 -O2 -mssse3 -DNDEBUG \
   -I include -I . \
   -I thirdparty/spdlog/include -I thirdparty/fmt/include -I thirdparty/simde \
   -I thirdparty/tomlplusplus/include -I thirdparty/cli11/include -I thirdparty/xxHash \
