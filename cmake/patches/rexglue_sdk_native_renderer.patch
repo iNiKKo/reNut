@@ -34,10 +34,10 @@ index 6ba61e5..642d79a 100644
      libavcodec libavutil
 diff --git a/include/rex/graphics/renut/command_processor.h b/include/rex/graphics/renut/command_processor.h
 new file mode 100644
-index 0000000..93dd793
+index 0000000..e028c62
 --- /dev/null
 +++ b/include/rex/graphics/renut/command_processor.h
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,35 @@
 +#pragma once
 +/**
 + * @file        graphics/renut/command_processor.h
@@ -60,8 +60,16 @@ index 0000000..93dd793
 +  ~RenutCommandProcessor();
 +
 + protected:
-+  bool IssueDraw(xenos::PrimitiveType prim_type, uint32_t index_count,
-+                 IndexBufferInfo* index_buffer_info, bool major_mode_explicit) override;
++  // Substitutes a native, statically-compiled pipeline for this draw when
++  // one is available -- see VulkanCommandProcessor::TryNativeDraw's own
++  // comment for the contract. This is the one point where reNut's native
++  // renderer diverges from stock draw submission.
++  bool TryNativeDraw(rex::graphics::vulkan::VulkanShader* vertex_shader,
++                     rex::graphics::vulkan::VulkanShader* pixel_shader,
++                     const rex::graphics::PrimitiveProcessor::ProcessingResult&
++                         primitive_processing_result,
++                     VkBuffer index_buffer, VkDeviceSize index_buffer_offset,
++                     VkIndexType index_type) override;
 +};
 +
 +}  // namespace rex::graphics::renut
@@ -426,10 +434,10 @@ index 9179574..405ead8 100644
 +endif()
 diff --git a/src/graphics/renut/command_processor.cpp b/src/graphics/renut/command_processor.cpp
 new file mode 100644
-index 0000000..dbab79a
+index 0000000..7530b27
 --- /dev/null
 +++ b/src/graphics/renut/command_processor.cpp
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,66 @@
 +/**
 + * @file        graphics/renut/command_processor.cpp
 + * @brief       reNut native command processor
@@ -438,6 +446,9 @@ index 0000000..dbab79a
 +#include <rex/graphics/renut/command_processor.h>
 +
 +#include <rex/logging.h>
++
++#include "../vulkan/renut_phase1_native_draw.h"
++#include "../vulkan/renut_xenos_pipeline_cache.h"
 +
 +namespace rex::graphics::renut {
 +
@@ -450,11 +461,46 @@ index 0000000..dbab79a
 +
 +RenutCommandProcessor::~RenutCommandProcessor() = default;
 +
-+bool RenutCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type, uint32_t index_count,
-+                                      IndexBufferInfo* index_buffer_info,
-+                                      bool major_mode_explicit) {
-+  return rex::graphics::vulkan::VulkanCommandProcessor::IssueDraw(
-+      prim_type, index_count, index_buffer_info, major_mode_explicit);
++bool RenutCommandProcessor::TryNativeDraw(
++    rex::graphics::vulkan::VulkanShader* vertex_shader,
++    rex::graphics::vulkan::VulkanShader* pixel_shader,
++    const rex::graphics::PrimitiveProcessor::ProcessingResult& primitive_processing_result,
++    VkBuffer index_buffer, VkDeviceSize index_buffer_offset, VkIndexType index_type) {
++  // "Convert the important/common shaders" (see PLAN_native_renderer.md):
++  // generalized pipeline cache, tried FIRST -- any shader pair that
++  // successfully batch-converted (tools/xenos_batch_convert.py) gets a real
++  // native pipeline here, not just Phase 1's one hand-picked pair below.
++  if (pixel_shader && rex::graphics::vulkan::renut_xenos_pipeline::HasNativePipeline(
++                          vertex_shader->ucode_data_hash(), pixel_shader->ucode_data_hash())) {
++    VkPipeline native_pipeline = rex::graphics::vulkan::renut_xenos_pipeline::GetOrCreatePipeline(
++        *this, vertex_shader, pixel_shader, primitive_processing_result.host_primitive_type);
++    if (native_pipeline != VK_NULL_HANDLE) {
++      rex::graphics::vulkan::renut_xenos_pipeline::IssueNativeDraw(
++          *this, native_pipeline, vertex_shader, pixel_shader, primitive_processing_result,
++          index_buffer, index_buffer_offset, index_type);
++      return true;
++    }
++    // Pipeline unavailable (unmappable vertex format, creation failed, etc,
++    // already logged) -- fall through rather than silently dropping this draw.
++  }
++
++  // Native-renderer Phase 1 (see PLAN_native_renderer.md): substitute the ONE
++  // chosen draw with a hand-built native Vulkan pipeline instead of the
++  // normal Xenos-translated pipeline/draw, kept as a simple, always-working
++  // observability check for the native draw mechanism itself.
++  if (pixel_shader && rex::graphics::vulkan::renut_phase1::IsTargetDraw(
++                          vertex_shader->ucode_data_hash(), pixel_shader->ucode_data_hash())) {
++    VkPipeline phase1_pipeline = rex::graphics::vulkan::renut_phase1::GetOrCreatePipeline(*this);
++    if (phase1_pipeline != VK_NULL_HANDLE) {
++      rex::graphics::vulkan::renut_phase1::IssueNativeDraw(*this, phase1_pipeline);
++      return true;
++    }
++    // Pipeline unavailable (device lacks bufferDeviceAddress, or creation
++    // failed and was already logged) -- fall through to the normal
++    // Xenos-translated draw rather than silently dropping this draw.
++  }
++
++  return false;
 +}
 +
 +}  // namespace rex::graphics::renut
