@@ -1,3 +1,37 @@
+// =============================================================================
+// cvar_menu.cpp
+//
+// Lets you edit every reNut cvar from inside the game's pause menu (selectable
+// ON/OFF or value next to each), instead of the F4 overlay. It adds a dedicated
+// "reNut Settings" tab/section to the pause section strip; its content is a
+// categorized, collapsible list ("[-]/[+] Category" headers + indented cvars).
+//
+// How it plugs into the game's XUI pause menu (all addresses from IDA):
+//   Content list (the rows within a section):
+//   * sub_825A89B0  - content-list builder. Fills dword_82FA32F8[] with item
+//                     type-IDs and dword_82FA32F4 with the count, then the tail
+//                     inserts that many XUI list rows.
+//   * sub_825A96C8  - per-item label callback.
+//   * sub_825A8D68  - selection/dispatch callback.
+//   * sub_825A76E0  - pause input handler; its "activate item" dispatch is a
+//                     jump table bounded to modes 0..7.
+//   Section strip (the tabs):
+//   * sub_825A6708  - strip builder. Fills dword_82FA32C4[] (section ids) +
+//                     dword_82FA32C0 (count).
+//   * sub_825A8110  - per-tab icon callback (off_82E51538[2*id]).
+//   * sub_825A7CF0  - selected-section title text (off_82E5153C[2*id]).
+//   * sub_825A7D90  - section switch / setMode(obj, id); jump table id<=7.
+//
+// In cvar mode we NEVER store rows in the guest item array: the injection hook
+// writes only the COUNT, and the label/dispatch overrides source everything
+// from the host-side model (g_cats -> g_rows). Section id 8 = "reNut Settings"
+// (game uses 0..7); its icon reuses section 0's. Because sub_825A76E0's activate
+// dispatch is bounded to modes 0..7, we present mode 0 while our section is
+// active so A-press routes to sub_825A8D68 (our toggle).
+//
+// See: https://github.com/rexglue/rexglue-sdk/wiki/Function-Overrides
+// =============================================================================
+
 #include <rex/hook.h>
 #include <rex/cvar.h>
 #include <rex/logging.h>
@@ -6,12 +40,18 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#ifndef _WIN32
+// Keeps renut.toml out of the working directory so it survives an AppImage.
+#include "linuxfixes/xdg_paths.h"
+#endif
 
 #if defined(_MSC_VER)
 #include <stdlib.h>
@@ -326,7 +366,25 @@ static void ApplyCvarChange(const CvarRow& row, bool forward) {
 // cvars are appended. Commands are never written (they have no value). This is
 // why we don't use rex::cvar::SaveConfig(), which truncates the whole file.
 // -----------------------------------------------------------------------------
-static constexpr const char* kRenutConfigPath = "renut.toml";
+// Resolved once, on first use.
+//
+// This must not stay a bare relative path on Linux. A relative name resolves
+// against the process working directory, which for an AppImage is wherever the
+// user happened to launch it from -- so the cvar config was being created next
+// to the .AppImage and never found again. Running the build-dir binary hid this,
+// because there the working directory is the build directory.
+//
+// Windows keeps the executable-relative behaviour, matching path_config_store.h.
+static const std::filesystem::path& RenutConfigPath() {
+#ifdef _WIN32
+  static const std::filesystem::path path{"renut.toml"};
+#else
+  // Also migrates a copy sitting beside the executable from before this change.
+  static const std::filesystem::path path =
+      renut::linuxfixes::ResolveWithMigration(renut::linuxfixes::ConfigDir(), "renut.toml");
+#endif
+  return path;
+}
 
 static std::string TomlQuote(const std::string& s) {
   std::string out = "\"";
@@ -347,8 +405,8 @@ static std::string TrimWs(const std::string& s) {
   return s.substr(b, e - b + 1);
 }
 
-// Not static: the controls overlay (overlays/mnk_controls_dialog.h) persists
-// rebinds through this too.
+// Declared in overlays/mnk_controls_dialog.h, which calls it from the controls
+// overlay. Deliberately not static: a second translation unit needs it.
 void RenutSaveConfig() {
   // desired[name] = formatted TOML value, for every value cvar != its default.
   // managed = every value-cvar name, so we can update or drop its existing line.
@@ -367,7 +425,7 @@ void RenutSaveConfig() {
   std::vector<std::string> out;
   bool fileExisted = false;
   {
-    std::ifstream in(kRenutConfigPath);
+    std::ifstream in(RenutConfigPath());
     if (in) {
       fileExisted = true;
       std::string line;
@@ -408,9 +466,9 @@ void RenutSaveConfig() {
   for (const auto& kv : added)
     out.push_back(kv.first + " = " + kv.second);
 
-  std::ofstream f(kRenutConfigPath, std::ios::trunc);
+  std::ofstream f(RenutConfigPath(), std::ios::trunc);
   if (!f) {
-    REXLOG_ERROR("RenutSaveConfig: failed to open {}", kRenutConfigPath);
+    REXLOG_ERROR("RenutSaveConfig: failed to open {}", RenutConfigPath().string());
     return;
   }
   for (const auto& l : out)

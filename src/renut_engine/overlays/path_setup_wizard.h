@@ -6,8 +6,15 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+
+#ifdef _WIN32
 #include <shobjidl.h>
 #include <windows.h>
+#else
+#include <array>
+#include <cstdio>
+#include <sys/wait.h>
+#endif
 
 class PathSetupWizard : public rex::ui::ImGuiDialog {
 public:
@@ -108,6 +115,7 @@ private:
         }
     }
 
+#ifdef _WIN32
     static std::string BrowseForFolder(const char* default_path) {
         std::string result;
         IFileDialog* dlg = nullptr;
@@ -152,6 +160,58 @@ private:
         dlg->Release();
         return result;
     }
+#else
+    static std::string ShellQuote(const std::string& s) {
+        std::string out = "'";
+        for (char c : s) {
+            if (c == '\'') out += "'\\''";
+            else out += c;
+        }
+        out += "'";
+        return out;
+    }
+
+    // Runs a picker command and returns its trimmed stdout, or (found=false) if
+    // the command itself couldn't be run (e.g. the binary isn't installed).
+    static std::string RunPicker(const std::string& cmd, bool& found) {
+        found = true;
+        FILE* pipe = popen(cmd.c_str(), "r");
+        if (!pipe) { found = false; return std::string(); }
+
+        std::string result;
+        std::array<char, 512> buf;
+        size_t n;
+        while ((n = fread(buf.data(), 1, buf.size(), pipe)) > 0)
+            result.append(buf.data(), n);
+
+        int status = pclose(pipe);
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 127)
+            found = false;  // shell couldn't find the binary
+
+        while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
+            result.pop_back();
+        return result;
+    }
+
+    // No SDL/portal dialog integration here (would need to pump the event loop
+    // while blocked); shell out to whichever native picker is installed instead.
+    static std::string BrowseForFolder(const char* default_path) {
+        bool found = false;
+        std::string cmd = "zenity --file-selection --directory --title=\"Select Folder\"";
+        if (default_path && default_path[0])
+            cmd += " --filename=" + ShellQuote(std::string(default_path) + "/");
+        cmd += " 2>/dev/null";
+
+        std::string result = RunPicker(cmd, found);
+        if (found) return result;
+
+        cmd = "kdialog --getexistingdirectory " +
+            ShellQuote((default_path && default_path[0]) ? default_path : ".") +
+            " 2>/dev/null";
+        result = RunPicker(cmd, found);
+        return result;
+    }
+#endif
 
     void TryCommit() {
         std::filesystem::path game = game_data_buf_.c_str();
