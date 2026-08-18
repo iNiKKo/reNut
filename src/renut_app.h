@@ -3,8 +3,7 @@
 #include "renut_engine/overlays/fps_overlay_dialog.h"
 #include "renut_engine/renut_logging.h"
 #include "renut_engine/overlays/renut_logging_overlay.h"
-#include "renut_engine/overlays/ab_benchmark_overlay.h"
-#include "renut_engine/overlays/render_stats_overlay.h"
+#include "renut_engine/overlays/debug_hub_overlay.h"
 #include "renut_engine/overlays/path_setup_wizard.h"
 #include "renut_engine/Timer.h"
 #include "renut_engine/Fps.h"
@@ -92,8 +91,7 @@ public:
         fps_dialog_->fpsManager = &fpsManager;
         drawer->AddDialog(fps_dialog_.get());
         drawer->AddDialog(new RenuLogOverlayDialog(drawer));
-        drawer->AddDialog(new AbBenchmarkOverlayDialog(drawer));
-        drawer->AddDialog(new RenderStatsOverlayDialog(drawer));
+        drawer->AddDialog(new DebugHubOverlayDialog(drawer));
         path_wizard_ = new PathSetupWizard(drawer);
         drawer->AddDialog(path_wizard_);
 

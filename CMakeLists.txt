@@ -199,6 +199,14 @@ if(UNIX AND NOT APPLE)
     target_link_options(renut PRIVATE
         "-Wl,--export-dynamic-symbol=${RENUT_OPENEXISTING_SYMBOL}")
 
+    # Same mechanism, for RenutEmitTraceRow (src/renut_engine/trace_stats.cpp):
+    # the nativevk/xenos plugin calls this weak hook (see
+    # rex/graphics/vulkan/renut_trace_hook.h in the SDK) once per frame with
+    # timing data for the "Renderer performance" overlay. extern "C" means no
+    # mangled name to keep in sync here.
+    target_link_options(renut PRIVATE
+        "-Wl,--export-dynamic-symbol=RenutEmitTraceRow")
+
     # Fail loudly if the symbol did not make it into .dynsym.
     add_custom_command(TARGET renut POST_BUILD
         COMMAND ${CMAKE_COMMAND}
