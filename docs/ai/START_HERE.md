@@ -82,6 +82,10 @@ current-but-temporary, not the end state.
 - [`nativevk.md`](nativevk.md) — the native renderer / rexglue-sdk boundary: setup,
   the hard rule in full, how to keep the patch current. Read before touching the
   renderer or the SDK checkout.
+- [`MIGRATION.md`](MIGRATION.md) — the process for bringing an independently-developed
+  branch/fork onto `Renderer`: checking git ancestry first, never bringing SDK source
+  along, reconciling overlapping files without clobbering other people's work, and
+  cleanup before opening a PR. Read before migrating any project onto this branch.
 - [`research.md`](research.md) — narrative background: what the project is, current
   architecture, how comparable projects (UnleashedRecomp, DPRecomp, Xenia) solve the
   same problems. Read for context, or to explain the project to someone new.
