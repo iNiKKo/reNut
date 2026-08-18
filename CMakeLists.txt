@@ -27,7 +27,7 @@ endif()
 
 include(generated/rexglue.cmake)
 
-# Native-renderer shader pipeline (see PLAN_native_renderer.md). Fetches
+# Native-renderer shader pipeline (see docs/ai/research.md). Fetches
 # XenosRecomp and, if a guest shader dump already exists, regenerates the
 # recompiled shader cache at configure time. Must come after rexglue.cmake so
 # the SDK's own fmt::fmt / xxHash::xxhash targets exist first and XenosRecomp
@@ -68,7 +68,7 @@ else()
 endif()
 
 # Native-renderer: convert ONE known-good real Banjo shader to HLSL via
-# XenosRecomp (see PLAN_native_renderer.md Phase 0 item 3/4 and Phase 1).
+# XenosRecomp (see docs/ai/research.md Phase 0 item 3/4 and Phase 1).
 # Deliberately NOT the whole shader dump -- XenosRecomp's directory-scan mode
 # hard-aborts (some shaders even segfault it) on real Banjo shaders it can't
 # fully handle yet, and Phase 1 only needs one working shader. No-ops until a
@@ -119,7 +119,7 @@ if(TARGET renut_synthesize_constant_tables_target AND TARGET renut_synthesize_co
     add_dependencies(renut_synthesize_containers_from_ucode_target renut_synthesize_constant_tables_target)
 endif()
 
-# "Convert the important/common shaders" effort (see PLAN_native_renderer.md):
+# "Convert the important/common shaders" effort (see docs/ai/research.md):
 # batch-converts the WHOLE real guest shader dump (all shaders captured by
 # `dump_guest_shaders`, hundreds of real Banjo shaders) to compiled SPIR-V,
 # isolating crash-prone shaders per-subprocess so they're skipped instead of

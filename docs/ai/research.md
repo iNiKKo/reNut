@@ -1,10 +1,17 @@
 # reNut Knowledge Bible
 
+> **Scope**: narrative background — what reNut/rexglue/XenosRecomp actually are, the
+> current architecture, and how comparable projects (UnleashedRecomp, DPRecomp, Xenia)
+> solve the same problems. Read this for context before making an architectural call, or
+> to explain the project to someone new. Skip it if you already know the shape of the
+> project and just need the rules ([`START_HERE.md`](../START_HERE.md)) or a specific
+> past event ([`history.md`](history.md)).
+
 Living reference document: what this project is, where it stands, what's been tried,
 what's left, and how comparable projects solve the same problems. This is a *narrative/
-research* document for humans — for terse machine-oriented state, see `PROJECT_MEMORY.md`.
+research* document for humans — for terse machine-oriented state, see `history.md`.
 Update this when the project's stage, goals, or research picture changes; update
-`PROJECT_MEMORY.md` for tactical discoveries/fixes/failures.
+`history.md` for tactical discoveries/fixes/failures.
 
 Last updated: 2026-08-17. All numeric claims re-verified against the live tree
 and shader manifest on 2026-08-17 (§2a) — earlier drafts of this file carried
@@ -188,7 +195,7 @@ this is the thing worth root-causing, not papering over with more exclusion heur
 ## 5. Checklist of Ideas / Potential Next Steps
 
 Ideas below are unranked except within groups; check off / annotate as they're tried.
-Cross-reference `PROJECT_MEMORY.md` before starting any of these — some overlap with
+Cross-reference `history.md` before starting any of these — some overlap with
 documented failed approaches.
 
 > **2026-08-17 update — the vertex-shader half of this list is now root-caused.**
@@ -200,7 +207,7 @@ documented failed approaches.
 > table missing non-TEXCOORD usages, 13 shaders) account for most of the rest.
 > Full analysis with measured tables, ruled-out hypotheses and a ranked fix order:
 > https://claude.ai/code/artifact/b760eff3-3850-4f0f-9676-29c06a4d1463
-> See `PROJECT_MEMORY.md` for the terse version with file:line references.
+> See `history.md` for the terse version with file:line references.
 > **Note the trap**: 0 of those 198 have a real captured vertex declaration, so simply
 > widening the table ships 198 shaders wired from *guessed* semantics. The fix is to stop
 > routing vertex data through D3D9 usage names at all (item below, now evidence-backed).
@@ -359,7 +366,7 @@ even though these are separate codebases, not a shared game engine repo):
 
 ### Xenia (Xbox 360 emulator — not a recompiler, but shares the exact same GPU hardware target)
 - **The single most relevant real architectural lead found this project has** (see
-  `PROJECT_MEMORY.md` and `renut_shader_conversion_blockers.md` for full detail): on real
+  `history.md` and `renut_shader_conversion_blockers.md` for full detail): on real
   Xenos hardware, interpolator linkage between vertex shader exports and pixel shader
   imports is **purely positional (by register index), not by semantic name**. Export
   register `o0` is always position; generic interpolators `o1`-`o15` link to the pixel
@@ -415,7 +422,7 @@ even though these are separate codebases, not a shared game engine repo):
 
 ## 7. Where things actually live (orientation)
 
-Full path/symbol detail is in `PROJECT_MEMORY.md` — this is the two-minute version,
+Full path/symbol detail is in `history.md` — this is the two-minute version,
 because the single most common way to waste time on this project is editing or
 testing the wrong copy of something.
 

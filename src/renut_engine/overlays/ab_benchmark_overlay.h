@@ -71,7 +71,7 @@ inline void DrawContent() {
         ImGui::TextWrapped(
             "This benchmark harness was part of the old renut plugin's diagnostic "
             "instrumentation, removed while shrinking the rexglue-sdk patch to a "
-            "minimal, principled diff (see PROJECT_MEMORY.md). Not currently wired "
+            "minimal, principled diff (see docs/ai/history.md). Not currently wired "
             "up in rexgpu-nativevk.");
         return;
     }

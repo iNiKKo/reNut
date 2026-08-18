@@ -1,5 +1,12 @@
 # reNut Project Memory
 
+> **Scope**: chronological log — what was tried, what broke, what fixed it, session by
+> session. Read this when you need *provenance* for a specific past decision or bug, or
+> to pick up exactly where the last session left off (see the top section). Skip it if
+> you just need current architecture/rules — that's [`START_HERE.md`](../START_HERE.md)
+> and [`research.md`](research.md) instead. This file is terse and machine-oriented by
+> design; `research.md` is the narrative/human-readable counterpart.
+
 reNut/rexglue: static recompilation of Banjo-Kazooie: Nuts & Bolts (Xbox 360)
 to native Linux. XenosRecomp compiles Xenos GPU shader microcode -> HLSL ->
 DXC -> SPIR-V ahead of time. Goal: replace the "stock" runtime-translated
@@ -16,7 +23,7 @@ Last full audit: **2026-08-17**.
 
 **1. Team collaboration prep, DONE**: this fork's native-renderer work (rexglue-sdk diff
 reduced from ~1900 lines to a small patch, one virtual hook + Vulkan device features, see
-`RENDERER_SDK_SETUP.md`) is committed on `linux-work`, ready to push to `origin` (`iNiKKo/reNut`)
+`nativevk.md`) is committed on `linux-work`, ready to push to `origin` (`iNiKKo/reNut`)
 and PR against `masterspike52/reNut:Renderer`. **Plugin renamed** (2026-08-18, user request --
 "renut" was confusing next to the project's own name): `gpu_plugin = "renut"` ->
 `gpu_plugin = "nativevk"`, CMake target `rexgpu-renut` -> `rexgpu-nativevk`,
@@ -266,7 +273,7 @@ in this SDK's diff that hasn't at least been shipped for testing.** Three real c
 found and individually disabled/rebuilt/deployed: `kRenutDynamicConstants` (tested, ruled out),
 `TextureCache::RequestTextures`'s early-return (tested, ruled out), and
 `SharedMemory::RequestRanges`'s scratch-buffer reuse (shipped, user result pending — check
-PROJECT_MEMORY.md's top section for whether this came back before reading further). Everything
+history.md's top section for whether this came back before reading further). Everything
 else in the diff is counters/logging/dead-code/unrelated-tooling with no plausible rendering
 effect.
 
@@ -714,9 +721,9 @@ nothing").
   (a bare PATCH_COMMAND string does *not* get a shell — that bug was real and fixed).
 - `CMakePresets.json` — presets `linux-amd64-{debug,release,relwithdebinfo}` and
   `win-amd64-*`. The one in use is `linux-amd64-relwithdebinfo`.
-- `PLAN_native_renderer.md` (~85KB) — the long-form native-renderer plan
+- `archive/native-renderer-plan.md` (~85KB) — the long-form native-renderer plan
   (Phase 0/1/...). Referenced by the cmake files. Large; grep it, don't read whole.
-- `DESIGN_deferred_vfetch_flush.md` (~17KB) — deferred-flush design; that rewrite
+- `archive/deferred-vfetch-flush.md` (~17KB) — deferred-flush design; that rewrite
   was **abandoned and reverted** (see memory `renut_barrier_attribution`). Historical.
 - `config/renut_hooks.toml` — midasm hooks (guest addresses -> named C++ hooks).
 - `renut_manifest.toml` / `renut_config.toml` — rexglue SDK project manifest

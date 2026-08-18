@@ -1,5 +1,5 @@
 # rexglue_xenosrecomp.cmake — build-time Xenos shader microcode -> HLSL/SPIR-V
-# for the native-renderer effort (see PLAN_native_renderer.md Phase 0 item 3/4
+# for the native-renderer effort (see docs/ai/research.md Phase 0 item 3/4
 # and Phase 1).
 #
 # Fetches hedge-dev/XenosRecomp as a host tool. Two entry points:
@@ -67,7 +67,7 @@ include(FetchContent)
 # Normal/Tangent/Binormal; ALU register file 32 -> 64), captured via `git diff`
 # against the pristine FetchContent checkout and verified with `git apply
 # --check` against a fresh clone of the same upstream commit. See
-# PROJECT_MEMORY.md's "DONE (2026-08-17)" section for the full rationale and
+# docs/ai/history.md's "DONE (2026-08-17)" section for the full rationale and
 # measured before/after shader-conversion yield. Kept as ONE combined patch
 # file (not two applied in sequence) since PATCH_COMMAND's idempotent
 # check-then-apply logic only handles a single patch cleanly.

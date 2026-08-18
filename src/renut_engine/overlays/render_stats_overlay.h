@@ -147,7 +147,7 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
         ImGui::TextDisabled("A large low-use count is a long tail of single-use shader pairs -");
         ImGui::TextDisabled("consistent with many off-screen objects each contributing a draw.");
         ImGui::Separator();
-        Count(trace, "Phase 1 native draws (see PLAN_native_renderer.md)", "phase1_draws");
+        Count(trace, "Phase 1 native draws (see docs/ai/research.md)", "phase1_draws");
         Time(trace, "Phase 1 native draw cost (CPU wall time)", "phase1_ms");
         ImGui::TextDisabled("Substitutes one specific vertex shader's draws with a hand-built");
         ImGui::TextDisabled("native Vulkan pipeline. CPU wall time, not isolated GPU time -");
