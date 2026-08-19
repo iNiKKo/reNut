@@ -426,3 +426,12 @@ address = 0x82656728
 name = "d3d9DrawIndexedVerticesUP_hook"
 registers = []
 after_instruction = false
+
+# Fifth real D3D9 draw entry point, found while verifying Phase 0's coverage
+# number -- see d3d9_draw_stats.cpp's own comment on
+# d3d9DrawIndexedTessellatedVertices_hook for why this was missing.
+[[midasm_hook]]
+address = 0x82230838
+name = "d3d9DrawIndexedTessellatedVertices_hook"
+registers = []
+after_instruction = false

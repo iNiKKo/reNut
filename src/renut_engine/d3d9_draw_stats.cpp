@@ -66,3 +66,14 @@ void d3d9DrawVertices_hook() { renut::d3d9_draw_stats::RecordDraw(); }
 void d3d9DrawIndexedVertices_hook() { renut::d3d9_draw_stats::RecordDraw(); }
 void d3d9DrawVerticesUP_hook() { renut::d3d9_draw_stats::RecordDraw(); }
 void d3d9DrawIndexedVerticesUP_hook() { renut::d3d9_draw_stats::RecordDraw(); }
+
+// Real gap found 2026-08-19 while verifying Phase 0's ~49% coverage number:
+// D3DDevice_DrawIndexedTessellatedVertices (0x82230838, config/renut_gpu_funcs.toml)
+// is a fifth, separate real D3D9 draw entry point that was never counted --
+// confirmed via a direct config/renut_gpu_funcs.toml grep for every
+// "D3DDevice_Draw*" name, not assumed. disable_tessellated_draw defaults to
+// true (skips these entirely, a real GPU-hang workaround, see hooks.cpp),
+// but with it off -- as it was during the low-coverage measurement -- these
+// draws execute normally and were simply invisible to Phase 0/d3d9_draw_stats,
+// which is a very plausible source of undercounting on its own.
+void d3d9DrawIndexedTessellatedVertices_hook() { renut::d3d9_draw_stats::RecordDraw(); }
