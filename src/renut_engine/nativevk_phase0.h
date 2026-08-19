@@ -12,26 +12,15 @@
 namespace renut::nativevk_phase0 {
 
 struct Snapshot {
-    // D3D9-hook draw count between the two most recent appMainDrawend hook
-    // fires (see FrameEnd()'s own comment for real, confirmed problems with
-    // treating this as "one real frame" -- appMainDrawStart never fires at
-    // all, and even the one working hook only covers ~62% of the SDK's own
-    // real frame count in testing). Kept as a rough diagnostic only --
-    // PREFER session_total_draws vs trace_stats::GetLatest()'s
-    // "session_draws_total" (both session-cumulative) for the actual Phase 0
-    // coverage gate, since that comparison needs no frame-alignment
-    // assumption at all.
-    uint64_t last_frame_draws = 0;
-
-    // Raw diagnostic counters (2026-08-19): confirmed via
+    // Raw diagnostic counter (2026-08-19): confirmed via
     // `grep appMainDrawStart generated/*.cpp` (zero matches) that rexglue's
     // codegen silently drops one of two midasm_hook entries sharing an
     // address -- appMainDrawStart never fires, only appMainDrawend does, and
     // even that one only fired 8765 times against the SDK's own 14218 real
-    // frames in one session (~62%). session_total_draws is the reliable
-    // session-cumulative D3D9-hook draw count -- compare it against
-    // trace_stats' own session-cumulative "session_draws_total".
-    uint64_t session_frame_starts = 0;
+    // frames in one session (~62%). Neither is a reliable per-frame boundary,
+    // so this is diagnostic only -- session_total_draws is the reliable
+    // session-cumulative D3D9-hook draw count, compared against trace_stats'
+    // own session-cumulative "session_draws_total" for the real coverage gate.
     uint64_t session_frame_ends = 0;
     uint64_t session_total_draws = 0;
 
@@ -51,14 +40,17 @@ struct Snapshot {
 
 Snapshot GetLatest();
 
-// Called from FPS.cpp's appMainDrawStart/appMainDrawend (the guest's real
-// per-frame draw-submission boundary, config/renut_hooks.toml address
-// 0x82222250) to scope last_frame_draws to one frame.
-void FrameStart();
+// Called from FPS.cpp's appMainDrawend (config/renut_hooks.toml address
+// 0x82222250, after_instruction=true) -- see session_frame_ends' own
+// comment for what this actually measures. No FrameStart() counterpart:
+// appMainDrawStart (same address, after_instruction=false) never fires at
+// all (a real, confirmed codegen limitation, not something to work around
+// here), so there was nothing for it to usefully do.
 void FrameEnd();
 
-// Called from this file's own global-scope hook thunks (nativevk_phase0.cpp)
-// -- declared here, not file-local, so their purpose is documented next to
+// Called from d3d9_draw_stats.cpp / shader_dump.cpp's own hook thunks, not
+// from any hook in this file directly (see nativevk_phase0.cpp's closing
+// comment for why) -- declared here so their purpose is documented next to
 // the rest of this module's API.
 void CountDraw();
 void RecordSetVertexShader(uint32_t handle);

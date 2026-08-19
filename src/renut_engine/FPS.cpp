@@ -60,15 +60,15 @@ void FPSCounter::Tick(){
     averageFps = 1000.0f / averageMs;
 }
 
-// Hooked from config/renut_hooks.toml (frame-timing instrumentation points
-// used by the native-renderer trace panel, see trace_stats.cpp). Also the
-// real per-frame boundary for nativevk_phase0's D3D9-hook draw-count
-// validation (docs/ai/archive/native-renderer-rewrite-plan.md Phase 0) --
-// this wraps the guest's ENTIRE draw submission (REX_HOOK_RAW(appMainDraw)
-// above), matching exactly what the SDK's own real "draws" trace stat
-// (trace_stats.cpp) is scoped to, so the two counts are directly comparable.
+// Hooked from config/renut_hooks.toml, same guest address as appMainDrawend
+// below (0x82222250, appMainDraw's entry point) but never actually fires --
+// confirmed via `grep appMainDrawStart generated/*.cpp` (zero matches):
+// rexglue's codegen silently drops one of two midasm_hook entries sharing
+// an address (same pattern on the sibling appMainTickPreDrawStart/end pair
+// just below). Left as a documented no-op rather than removed, matching
+// that pair's existing precedent -- the address stays wired in case a
+// future codegen fix makes it work.
 void appMainDrawStart() {
-    renut::nativevk_phase0::FrameStart();
 }
 
 void appMainDrawend() {

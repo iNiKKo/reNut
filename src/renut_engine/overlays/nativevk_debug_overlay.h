@@ -55,9 +55,6 @@ inline void DrawContent() {
         static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
 
     if (ImGui::CollapsingHeader("NativeVK Debug")) {
-        // appMainDrawStart never fires at all (a real, confirmed codegen
-        // limitation -- see nativevk_phase0.cpp's own comment), so
-        // session_frame_starts is permanently 0 and not shown here.
         ImGui::Text("%-28s %7llu", "Frame-end hook fires", static_cast<unsigned long long>(phase0.session_frame_ends));
         if (Has(trace, "frame")) {
             ImGui::Text("%-28s %7.0f", "SDK real frame count", Value(trace, "frame"));
