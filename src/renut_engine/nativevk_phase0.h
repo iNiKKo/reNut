@@ -36,6 +36,22 @@ struct Snapshot {
     // call counts above and hide how many DISTINCT shaders are affected.
     uint64_t session_distinct_handles_seen = 0;
     uint64_t session_distinct_handles_unresolved = 0;
+
+    // Session-lifetime count of real CreateVertexShader (0x8264E8B0) calls,
+    // and how many of those had a blob computeShaderUcodeHash() could
+    // actually parse (see shader_dump.cpp's dumpVertexShaderCreate_hook) --
+    // distinguishes "shader never went through CreateVertexShader" (real
+    // IM_LOAD bypass) from "went through CreateVertexShader but the blob
+    // failed to parse" (a bug in the parser, not the game's architecture).
+    uint64_t session_create_vertex_shader_calls = 0;
+    uint64_t session_create_vertex_shader_parsed = 0;
+
+    // Of the unresolved handles above, how many were recovered by treating
+    // the handle value itself as a raw ShaderContainer blob pointer (see
+    // shader_dump.cpp's TryResolveShaderUcodeHash) -- tests whether
+    // IM_LOAD-bypass draws pass the real blob pointer directly to
+    // SetVertexShader instead of an allocated handle.
+    uint64_t session_unresolved_resolved_via_blob_fallback = 0;
 };
 
 Snapshot GetLatest();
@@ -54,5 +70,7 @@ void FrameEnd();
 // the rest of this module's API.
 void CountDraw();
 void RecordSetVertexShader(uint32_t handle);
+void RecordCreateVertexShaderAttempt(bool parsed);
+void RecordUnresolvedHandleParsedAsBlob();
 
 }

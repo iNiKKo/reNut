@@ -45,6 +45,9 @@ set(RENUT_SOURCES
     src/renut_engine/game_activity_stats.cpp
     src/renut_engine/render_hooks_stub.cpp
     src/renut_engine/nativevk_phase0.cpp
+    src/renut_engine/nativevk/command_queue.cpp
+    src/renut_engine/nativevk/renderer.cpp
+    src/renut_engine/nativevk/hooks.cpp
     src/renut_engine/d3d9_draw_stats.cpp
     src/renut_engine/trace_stats.cpp
     src/renut_engine/shader_dump.cpp
@@ -186,6 +189,10 @@ endif()
 # since that mode's headers are already flattened by `make install`.
 if(TARGET imgui::imgui)
     target_link_libraries(renut PRIVATE imgui::imgui)
+endif()
+
+if(TARGET renderdoc)
+    target_link_libraries(renut PRIVATE renderdoc)
 endif()
 
 # GPU_PLUGINS is xenos only -- rexgpu-nativevk requires a rexglue-sdk

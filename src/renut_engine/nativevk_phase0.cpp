@@ -1,5 +1,6 @@
 #include "renut_engine/nativevk_phase0.h"
 #include "renut_engine/shader_dump.h"
+#include "renut_logging.h"
 
 #include <atomic>
 #include <mutex>
@@ -14,6 +15,14 @@ std::atomic<uint64_t> g_sessionTotalDraws{0};
 
 std::atomic<uint64_t> g_sessionSetVertexShaderCalls{0};
 std::atomic<uint64_t> g_sessionUnresolvedCalls{0};
+
+std::atomic<uint64_t> g_sessionCreateVertexShaderCalls{0};
+std::atomic<uint64_t> g_sessionCreateVertexShaderParsed{0};
+
+std::atomic<uint64_t> g_sessionUnresolvedResolvedViaBlobFallback{0};
+
+constexpr uint32_t kMaxUnresolvedHandleLogs = 25;
+std::atomic<uint32_t> g_unresolvedHandleLogs{0};
 
 std::mutex g_handleMutex;
 std::unordered_set<uint32_t> g_handlesSeen;
@@ -37,11 +46,20 @@ void RecordSetVertexShader(uint32_t handle) {
         g_sessionUnresolvedCalls.fetch_add(1, std::memory_order_relaxed);
     }
 
-    std::lock_guard<std::mutex> lock(g_handleMutex);
-    if (g_handlesSeen.insert(handle).second) {
-        if (!resolved) g_handlesUnresolved.insert(handle);
-    } else if (resolved) {
-        g_handlesUnresolved.erase(handle);
+    bool firstSeen;
+    {
+        std::lock_guard<std::mutex> lock(g_handleMutex);
+        firstSeen = g_handlesSeen.insert(handle).second;
+        if (firstSeen) {
+            if (!resolved) g_handlesUnresolved.insert(handle);
+        } else if (resolved) {
+            g_handlesUnresolved.erase(handle);
+        }
+    }
+
+    if (firstSeen && !resolved &&
+        g_unresolvedHandleLogs.fetch_add(1, std::memory_order_relaxed) < kMaxUnresolvedHandleLogs) {
+        RNUT_INFO("nativevk phase0: unresolved SetVertexShader handle {:#x}", handle);
     }
 }
 
@@ -51,10 +69,25 @@ Snapshot GetLatest() {
     snapshot.session_total_draws = g_sessionTotalDraws.load(std::memory_order_relaxed);
     snapshot.session_set_vertex_shader_calls = g_sessionSetVertexShaderCalls.load(std::memory_order_relaxed);
     snapshot.session_unresolved_set_vertex_shader_calls = g_sessionUnresolvedCalls.load(std::memory_order_relaxed);
+    snapshot.session_create_vertex_shader_calls = g_sessionCreateVertexShaderCalls.load(std::memory_order_relaxed);
+    snapshot.session_create_vertex_shader_parsed = g_sessionCreateVertexShaderParsed.load(std::memory_order_relaxed);
+    snapshot.session_unresolved_resolved_via_blob_fallback =
+        g_sessionUnresolvedResolvedViaBlobFallback.load(std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_handleMutex);
     snapshot.session_distinct_handles_seen = g_handlesSeen.size();
     snapshot.session_distinct_handles_unresolved = g_handlesUnresolved.size();
     return snapshot;
+}
+
+void RecordCreateVertexShaderAttempt(bool parsed) {
+    g_sessionCreateVertexShaderCalls.fetch_add(1, std::memory_order_relaxed);
+    if (parsed) {
+        g_sessionCreateVertexShaderParsed.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+void RecordUnresolvedHandleParsedAsBlob() {
+    g_sessionUnresolvedResolvedViaBlobFallback.fetch_add(1, std::memory_order_relaxed);
 }
 
 // Wired from FPS.cpp's appMainDrawend (config/renut_hooks.toml, address

@@ -478,7 +478,9 @@ void dumpVertexShaderCreate_hook(PPCRegister& r3)
 	dumpCodeBytesOnce();
 
 	uint64_t ucodeHash = 0;
-	if (!computeShaderUcodeHash(r3.u32, ucodeHash)) return;
+	const bool parsed = computeShaderUcodeHash(r3.u32, ucodeHash);
+	renut::nativevk_phase0::RecordCreateVertexShaderAttempt(parsed);
+	if (!parsed) return;
 
 	std::lock_guard<std::mutex> lock(g_vsMutex);
 	g_pendingShaderUcodeHash = ucodeHash;
@@ -641,9 +643,20 @@ namespace renut::shader_dump {
 bool TryResolveShaderUcodeHash(uint32_t handle, uint64_t& outHash)
 {
 	const uint64_t hash = resolveShaderUcodeHash(handle);
-	if (hash == 0) return false;
-	outHash = hash;
-	return true;
+	if (hash != 0) {
+		outHash = hash;
+		return true;
+	}
+
+	uint64_t blobHash = 0;
+	if (computeShaderUcodeHash(handle, blobHash)) {
+		outHash = blobHash;
+		renut::nativevk_phase0::RecordUnresolvedHandleParsedAsBlob();
+		return true;
+	}
+
+	dumpObjectHex("unresolved_sv", handle);
+	return false;
 }
 
 }  // namespace renut::shader_dump

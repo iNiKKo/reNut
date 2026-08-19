@@ -53,6 +53,15 @@ inline void DrawContent() {
         static_cast<unsigned long long>(phase0.session_distinct_handles_seen));
     ImGui::Text("%-28s %7llu", "...distinct unresolved",
         static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
+    ImGui::Text("%-28s %7llu", "CreateVertexShader calls",
+        static_cast<unsigned long long>(phase0.session_create_vertex_shader_calls));
+    const double createParsedPct = phase0.session_create_vertex_shader_calls > 0
+        ? double(phase0.session_create_vertex_shader_parsed) / double(phase0.session_create_vertex_shader_calls) * 100.0
+        : 0.0;
+    ImGui::Text("%-28s %7llu  (%.1f %%)", "...blob parsed OK",
+        static_cast<unsigned long long>(phase0.session_create_vertex_shader_parsed), createParsedPct);
+    ImGui::Text("%-28s %7llu", "...resolved via blob fallback",
+        static_cast<unsigned long long>(phase0.session_unresolved_resolved_via_blob_fallback));
 
     if (ImGui::CollapsingHeader("NativeVK Debug")) {
         ImGui::Text("%-28s %7llu", "Frame-end hook fires", static_cast<unsigned long long>(phase0.session_frame_ends));

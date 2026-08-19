@@ -437,3 +437,15 @@ address = 0x82230838
 name = "d3d9DrawIndexedTessellatedVertices_hook"
 registers = []
 after_instruction = false
+
+[[midasm_hook]]
+address = 0x822812C8
+name = "nativevkClear_hook"
+registers = []
+after_instruction = true
+
+[[midasm_hook]]
+address = 0x822811A0
+name = "nativevkClearF_hook"
+registers = []
+after_instruction = true
