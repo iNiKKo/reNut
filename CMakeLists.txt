@@ -45,6 +45,7 @@ set(RENUT_SOURCES
     src/renut_engine/game_activity_stats.cpp
     src/renut_engine/render_hooks_stub.cpp
     src/renut_engine/nativevk_phase0.cpp
+    src/renut_engine/d3d9_draw_stats.cpp
     src/renut_engine/trace_stats.cpp
     src/renut_engine/shader_dump.cpp
     src/renut_engine/texture_tools.cpp

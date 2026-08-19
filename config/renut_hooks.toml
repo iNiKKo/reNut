@@ -415,3 +415,39 @@ after_instruction = false
 address = 0x8220F210
 name = "appMainTickPreDrawend"
 after_instruction = true
+
+# d3d9_draw_stats.cpp: "connect the values" (draws/depthonly/nopixelshader/
+# color_draws in the F5 Performance tab) without requiring the native-
+# renderer SDK patch -- read-only, sourced purely from D3D9 guest hooks, so
+# it works with any GPU plugin. Independent of nativevk_phase0's own draw
+# hooks (config/renut_gpu_funcs.toml addresses) -- confirmed elsewhere in
+# this file that multiple midasm_hooks at the same address are supported.
+[[midasm_hook]]
+address = 0x82226730
+name = "d3d9SetPixelShader_hook"
+registers = ["r3", "r4"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222C7A0
+name = "d3d9DrawVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x826567C8
+name = "d3d9DrawIndexedVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222E520
+name = "d3d9DrawVerticesUP_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82656728
+name = "d3d9DrawIndexedVerticesUP_hook"
+registers = []
+after_instruction = false
