@@ -35,6 +35,11 @@ inline const Api& Get() {
         if (!self) {
             self = RenutDlOpenNoLoad("rexgpu-nativevk.dll");
         }
+#elif defined(__APPLE__)
+        void* self = RenutDlOpenNoLoad("librexgpu-nativevkrd.dylib");
+        if (!self) {
+            self = RenutDlOpenNoLoad("librexgpu-nativevk.dylib");
+        }
 #else
         void* self = RenutDlOpenNoLoad("librexgpu-nativevkrd.so");
         if (!self) {
