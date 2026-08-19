@@ -2,6 +2,7 @@
 #include "Fps.h"
 #include <renut_engine/hooks.h>
 #include <renut_engine/Timer.h>
+#include <renut_engine/game_activity_stats.h>
 #include <renut_engine/nativevk_phase0.h>
 #include <rex/hook.h>
 
@@ -72,6 +73,18 @@ void appMainDrawStart() {
 
 void appMainDrawend() {
     renut::nativevk_phase0::FrameEnd();
+
+    // Real fix (2026-08-19): game_activity_stats::EndFrame() (the only thing
+    // that copies the per-event Record*/Finish* counters into the snapshot
+    // the Performance tab actually reads) was only ever called from
+    // render_hooks_stub.cpp's nativeSwap() -- confirmed dead scaffolding,
+    // zero midasm_hook wiring anywhere (see docs/ai/archive/
+    // native-renderer-rewrite-plan.md). The counters themselves were
+    // incrementing correctly the whole time; the displayed snapshot just
+    // never refreshed from its initial all-zero state. appMainDrawend is a
+    // real, working hook (~62% of real frames, see nativevk_phase0.cpp's own
+    // comment) -- not perfectly 1:1 per frame, but far better than never.
+    renut::game_activity_stats::EndFrame();
 }
 
 void appMainTickPreDrawStart() {

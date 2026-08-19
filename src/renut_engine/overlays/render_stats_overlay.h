@@ -100,7 +100,9 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
         ImGui::Text("%-28s %7llu", "...distinct unresolved",
             static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
         if (ImGui::CollapsingHeader("Phase 0 raw diagnostics")) {
-            ImGui::Text("%-28s %7llu", "Frame-start hook fires", static_cast<unsigned long long>(phase0.session_frame_starts));
+            // appMainDrawStart never fires at all (a real, confirmed codegen
+            // limitation -- see nativevk_phase0.cpp's own comment), so
+            // session_frame_starts is permanently 0 and not shown here.
             ImGui::Text("%-28s %7llu", "Frame-end hook fires", static_cast<unsigned long long>(phase0.session_frame_ends));
             if (Has(trace, "frame")) {
                 ImGui::Text("%-28s %7.0f", "SDK real frame count", Value(trace, "frame"));
