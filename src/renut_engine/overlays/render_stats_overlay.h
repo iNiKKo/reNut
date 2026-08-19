@@ -3,7 +3,6 @@
 #include "imgui.h"
 #include "renut_engine/Fps.h"
 #include "renut_engine/game_activity_stats.h"
-#include "renut_engine/nativevk_phase0.h"
 #include "renut_engine/trace_stats.h"
 
 // Content-only: no window/Begin/End, no hotkey. Hosted as a tab inside
@@ -74,41 +73,6 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
     Count(trace, "No-pixel-shader submissions", "nopixelshader");
     Count(trace, "GPU fence waits", "gpuwait_n");
     Count(trace, "EDRAM resolves", "issuecopy_n");
-
-    ImGui::Separator();
-    ImGui::TextUnformatted("Phase 0: D3D9-hook rewrite validation");
-    {
-        const auto phase0 = renut::nativevk_phase0::GetLatest();
-        ImGui::Text("%-28s %7llu", "D3D9-hook draws (session)",
-            static_cast<unsigned long long>(phase0.session_total_draws));
-        if (Has(trace, "session_draws_total")) {
-            const double sdkDraws = Value(trace, "session_draws_total");
-            const double ratio = sdkDraws > 0.0 ? double(phase0.session_total_draws) / sdkDraws * 100.0 : 0.0;
-            ImGui::Text("%-28s %6.1f %%  (%.0f real)", "...as %% of SDK draws", ratio, sdkDraws);
-        }
-        ImGui::Text("%-28s %7llu", "Color draws (session, D3D9-hook)",
-            static_cast<unsigned long long>(Value(trace, "color_draws")));
-        ImGui::Text("%-28s %7llu", "SetVertexShader calls (session)",
-            static_cast<unsigned long long>(phase0.session_set_vertex_shader_calls));
-        const double unresolvedPct = phase0.session_set_vertex_shader_calls > 0
-            ? double(phase0.session_unresolved_set_vertex_shader_calls) / double(phase0.session_set_vertex_shader_calls) * 100.0
-            : 0.0;
-        ImGui::Text("%-28s %7llu  (%.1f %%)", "...unresolved calls",
-            static_cast<unsigned long long>(phase0.session_unresolved_set_vertex_shader_calls), unresolvedPct);
-        ImGui::Text("%-28s %7llu", "Distinct handles (session)",
-            static_cast<unsigned long long>(phase0.session_distinct_handles_seen));
-        ImGui::Text("%-28s %7llu", "...distinct unresolved",
-            static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
-        if (ImGui::CollapsingHeader("Phase 0 raw diagnostics")) {
-            // appMainDrawStart never fires at all (a real, confirmed codegen
-            // limitation -- see nativevk_phase0.cpp's own comment), so
-            // session_frame_starts is permanently 0 and not shown here.
-            ImGui::Text("%-28s %7llu", "Frame-end hook fires", static_cast<unsigned long long>(phase0.session_frame_ends));
-            if (Has(trace, "frame")) {
-                ImGui::Text("%-28s %7.0f", "SDK real frame count", Value(trace, "frame"));
-            }
-        }
-    }
 }
 
 }  // namespace detail
