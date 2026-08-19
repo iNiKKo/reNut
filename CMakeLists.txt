@@ -22,6 +22,7 @@ set(RENUT_SOURCES
 	src/renut_engine/cvar_menu.cpp
 	src/renut_engine/FPS.cpp
 	src/renut_engine/game_activity_stats.cpp
+	src/renut_engine/game_activity_hooks.cpp
 	src/renut_engine/trace_stats.cpp
 	src/renut_engine/shader_dump.cpp
 	src/renut_engine/texture_tools.cpp
