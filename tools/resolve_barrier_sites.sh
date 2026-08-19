@@ -6,7 +6,7 @@
 #   tools/resolve_barrier_sites.sh [log-file]
 set -eu
 
-SO="${RENUT_PLUGIN:-/home/nick/Desktop/reNut/out/build/linux-amd64-relwithdebinfo/librexgpu-renutrd.so}"
+SO="${RENUT_PLUGIN:-/home/nick/Desktop/reNut/out/build/linux-amd64-relwithdebinfo/librexgpu-nativevkrd.so}"
 LOG="${1:-$(ls -t "$HOME"/.local/state/renut/logs/*.log | head -1)}"
 
 [ -f "$SO" ] || { echo "plugin not found: $SO" >&2; exit 1; }

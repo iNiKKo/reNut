@@ -15,7 +15,7 @@
 # use for.
 set -eu
 
-SDK="${SDK_SRC:-/home/nick/Desktop/reNut-build-scratch/rexglue-sdk-src}"
+SDK="${SDK_SRC:-/home/nick/Desktop/reNut-build-scratch/rexglue-sdk-clean}"
 OUT="${1:-/tmp/ucode_analyze}"
 
 cd "$SDK"
