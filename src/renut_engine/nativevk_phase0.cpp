@@ -5,8 +5,6 @@
 #include <mutex>
 #include <unordered_set>
 
-#include <rex/ppc.h>
-
 namespace renut::nativevk_phase0 {
 
 namespace {
@@ -26,9 +24,9 @@ std::unordered_set<uint32_t> g_handlesUnresolved;
 
 }  // namespace
 
-// Called from the global-scope hook thunks at the bottom of this file --
-// kept internal-linkage-free (not in the anonymous namespace above) so
-// those thunks can reach them.
+// Called from d3d9_draw_stats.cpp / shader_dump.cpp's own hook thunks (see
+// this file's closing comment for why) -- kept internal-linkage-free (not
+// in the anonymous namespace above) so those other TUs can reach them.
 void CountDraw() {
     g_frameDrawCount.fetch_add(1, std::memory_order_relaxed);
     g_sessionTotalDraws.fetch_add(1, std::memory_order_relaxed);
@@ -100,29 +98,20 @@ void FrameEnd() {
 
 }  // namespace renut::nativevk_phase0
 
-// Hook thunks below are deliberately global-scope (not inside the namespace
-// above) -- every other midasm_hook target in this codebase (shader_dump.cpp,
-// FPS.cpp, hooks.cpp) is a plain global function, matched by name against
-// config/renut_hooks.toml's [[midasm_hook]] "name" field.
-
-// Read-only hooks on the four D3D9 draw entry points (config/renut_gpu_funcs.toml):
-// DrawVertices (0x8222C7A0), DrawIndexedVertices (0x826567C8), DrawVerticesUP
-// (0x8222E520), DrawIndexedVerticesUP (0x82656728). Just count -- no register
-// values needed, so registers = [] in config/renut_hooks.toml and these take
-// no PPCRegister arguments.
-void phase0DrawVertices_hook() { renut::nativevk_phase0::CountDraw(); }
-void phase0DrawIndexedVertices_hook() { renut::nativevk_phase0::CountDraw(); }
-void phase0DrawVerticesUP_hook() { renut::nativevk_phase0::CountDraw(); }
-void phase0DrawIndexedVerticesUP_hook() { renut::nativevk_phase0::CountDraw(); }
-
-// A second, independent midasm_hook at the SAME address as
-// dumpVertexShaderSet_hook (0x8222A0A8, shader_dump.cpp) -- confirmed
-// supported by rexglue's hook codegen (config/renut_hooks.toml already has
-// other duplicate-address pairs, e.g. 0x82222250's appMainDrawStart/end).
-// Deliberately NOT reusing dumpVertexShaderSet_hook itself: that function
-// (and everything it does -- dumpObjectHex, vertdecl-usage dumping) is
-// gated behind the unrelated renut_dump_vertex_decl cvar, so Phase 0
-// measurement must not depend on a user having that dump feature on.
-void phase0SetVertexShader_hook(PPCRegister&, PPCRegister& r4) {
-    renut::nativevk_phase0::RecordSetVertexShader(r4.u32);
-}
+// Real fix (2026-08-19): this file used to register its OWN midasm_hook
+// entries (phase0Draw*_hook at the four D3D9 draw addresses,
+// phase0SetVertexShader_hook at SetVertexShader) alongside other hooks
+// already present at those exact same addresses. Confirmed via a full
+// config/renut_hooks.toml sweep that rexglue's codegen only keeps the
+// LAST-defined midasm_hook when two entries share the same
+// (address, after_instruction) pair -- silently dropping the earlier one
+// entirely (dumpVertexShaderSet_hook and the four original draw-count
+// paths were all dead as a result, not just this one). Fixed by removing
+// those duplicate entries and having the single surviving hook at each
+// address call into both subsystems instead:
+//   - SetVertexShader (0x8222A0A8): dumpVertexShaderSet_hook
+//     (shader_dump.cpp) now also calls RecordSetVertexShader() directly.
+//   - The four draw addresses: d3d9DrawVertices_hook and friends
+//     (d3d9_draw_stats.cpp) now also call CountDraw() directly.
+// CountDraw()/RecordSetVertexShader() stay part of this namespace's public
+// API for that reason -- no longer called from a hook thunk in this file.

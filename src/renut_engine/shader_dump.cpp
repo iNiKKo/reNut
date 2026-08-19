@@ -4,6 +4,7 @@
 #include <rex/hash.h>
 #include <rex/runtime.h>
 #include "renut_logging.h"
+#include "renut_engine/nativevk_phase0.h"
 #include "renut_engine/shader_dump.h"
 
 #include <algorithm>
@@ -646,8 +647,21 @@ bool TryResolveShaderUcodeHash(uint32_t handle, uint64_t& outHash)
 
 }  // namespace renut::shader_dump
 
+// Real fix (2026-08-19): this is the ONLY midasm_hook at SetVertexShader's
+// guest address (0x8222A0A8) -- nativevk_phase0.cpp used to register its own
+// separate phase0SetVertexShader_hook here too, but confirmed via a full
+// config/renut_hooks.toml sweep that codegen only keeps the LAST-defined
+// midasm_hook when two entries share the same (address, after_instruction)
+// pair (the appMainDrawStart/appMainDrawend "before/after" pattern only
+// works because after_instruction genuinely differs there). That silently
+// dropped THIS hook entirely -- shader-declaration capture was dead the
+// whole time phase0SetVertexShader_hook existed. Fixed by merging: this one
+// hook now also drives Phase 0's tracking, unconditionally (before the
+// dump_vertex_decl-gated code below), instead of a second midasm_hook entry.
 void dumpVertexShaderSet_hook(PPCRegister& r3, PPCRegister& r4)
 {
+	renut::nativevk_phase0::RecordSetVertexShader(r4.u32);
+
 	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
 	static std::once_flag entered;
 	std::call_once(entered, [&] {

@@ -1,4 +1,5 @@
 #include "renut_engine/d3d9_draw_stats.h"
+#include "renut_engine/nativevk_phase0.h"
 
 #include <atomic>
 
@@ -12,13 +13,21 @@ std::atomic<uint64_t> g_totalDraws{0};
 std::atomic<uint64_t> g_depthOnlyDraws{0};
 std::atomic<bool> g_pixelShaderBound{false};
 
-// Called from the global-scope hook thunks below. Not in the anonymous
-// namespace above so those thunks (same TU) can reach it.
+// Internal-linkage helper, called only from this file's own hook thunks
+// below (same TU, so that's fine regardless of anonymous-namespace linkage).
+//
+// Real fix (2026-08-19): also drives nativevk_phase0's draw counter here --
+// Phase 0 used to register its own separate midasm_hook entries at these
+// same four D3D9 draw addresses, but confirmed via a config/renut_hooks.toml
+// sweep that codegen only keeps the LAST-defined hook when two entries
+// share an (address, after_instruction) pair, silently dropping Phase 0's
+// entirely. See nativevk_phase0.cpp's own closing comment for the full story.
 void RecordDraw() {
     g_totalDraws.fetch_add(1, std::memory_order_relaxed);
     if (!g_pixelShaderBound.load(std::memory_order_relaxed)) {
         g_depthOnlyDraws.fetch_add(1, std::memory_order_relaxed);
     }
+    renut::nativevk_phase0::CountDraw();
 }
 
 }  // namespace
