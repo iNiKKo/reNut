@@ -5,7 +5,7 @@
 # or no args to check the Vulkan backend plus the renut plugin sources.
 set -eu
 
-SDK="${SDK_SRC:-/home/nick/Desktop/reNut-build-scratch/rexglue-sdk-src}"
+SDK="${SDK_SRC:-/home/nick/Desktop/reNut-build-scratch/rexglue-sdk-clean}"
 cd "$SDK"
 
 CXX="${CXX:-g++}"
@@ -13,8 +13,8 @@ CXX="${CXX:-g++}"
 set -- ${1:+"$@"}
 if [ "$#" -eq 0 ]; then
     set -- src/graphics/vulkan/*.cpp src/graphics/plugin_main.cpp
-    if [ -d src/graphics/renut ]; then
-        set -- "$@" src/graphics/renut/*.cpp
+    if [ -d src/graphics/nativevk ]; then
+        set -- "$@" src/graphics/nativevk/*.cpp
     fi
 fi
 

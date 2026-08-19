@@ -44,6 +44,7 @@ set(RENUT_SOURCES
     src/renut_engine/FPS.cpp
     src/renut_engine/game_activity_stats.cpp
     src/renut_engine/render_hooks_stub.cpp
+    src/renut_engine/nativevk_phase0.cpp
     src/renut_engine/d3d9_draw_stats.cpp
     src/renut_engine/trace_stats.cpp
     src/renut_engine/shader_dump.cpp
@@ -218,22 +219,16 @@ if(UNIX AND NOT APPLE)
         "-Wl,--export-dynamic-symbol=${RENUT_OPENEXISTING_SYMBOL}")
 
     # Same mechanism, for RenutEmitTraceRow (src/renut_engine/trace_stats.cpp):
-    # the GPU plugin calls this weak hook (see
+    # the nativevk/xenos plugin calls this weak hook (see
     # src/renut_engine/renut_trace_hook.h -- reNut's own copy of the SDK-side
     # header of the same name, kept byte-identical; see that file's own
     # comment for why it isn't just #include'd from the SDK checkout) once
-    # per frame with timing data for the "Renderer performance" overlay, IF
-    # the plugin was built from an SDK checkout with the native-renderer
-    # patch applied. Without that patch (the normal case), the export below
-    # is inert -- nothing calls it -- and the Performance tab just shows
-    # "GPU trace unavailable" instead of failing. -Wl,--export-dynamic-symbol
-    # is a GNU ld/lld ELF-linker flag with no Windows/macOS equivalent
-    # wired up here, hence UNIX AND NOT APPLE; the symbol simply stays
-    # unexported (same inert-until-patched behavior) on those platforms.
+    # per frame with timing data for the "Renderer performance" overlay.
+    # extern "C" means no mangled name to keep in sync here.
     target_link_options(renut PRIVATE
         "-Wl,--export-dynamic-symbol=RenutEmitTraceRow")
 
-    # Fail loudly if the OpenExisting override did not make it into .dynsym.
+    # Fail loudly if the symbol did not make it into .dynsym.
     add_custom_command(TARGET renut POST_BUILD
         COMMAND ${CMAKE_COMMAND}
                 -DRENUT_BINARY=$<TARGET_FILE:renut>

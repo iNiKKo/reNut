@@ -4,6 +4,8 @@
 #include <rex/hash.h>
 #include <rex/runtime.h>
 #include "renut_logging.h"
+#include "renut_engine/nativevk_phase0.h"
+#include "renut_engine/shader_dump.h"
 
 #include <algorithm>
 #include <array>
@@ -460,14 +462,20 @@ void dumpVertexDeclarationCreated_hook(PPCRegister& r3)
 //     (see g_pendingShaderUcodeHash's own comment for why deferring this to
 //     later is unsafe) for later pairing with the handle this function is
 //     about to allocate and return.
-// The two gates are independent of each other, so neither short-circuits
-// the other's capture.
+// The dump_guest_shaders gate is independent of the ucode-hash capture
+// below it. Real, deliberate change (see
+// docs/ai/archive/native-renderer-rewrite-plan.md Phase 0): the ucode-hash
+// capture used to early-return unless renut_dump_vertex_decl was enabled,
+// same as the rest of this file's dump-to-disk paths. But this function
+// (and dumpVertexShaderCreated_hook below) only computes a hash and inserts
+// into a map -- no I/O -- and renut::shader_dump::TryResolveShaderUcodeHash
+// (used by nativevk_phase0.cpp to measure real IM_LOAD-bypass rate) needs
+// g_shaderHandleToUcodeHash populated unconditionally, not only when a user
+// happens to have the unrelated vertex-decl-dump feature enabled.
 void dumpVertexShaderCreate_hook(PPCRegister& r3)
 {
 	dumpShaderBlob(r3, "vs");
 	dumpCodeBytesOnce();
-
-	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
 
 	uint64_t ucodeHash = 0;
 	if (!computeShaderUcodeHash(r3.u32, ucodeHash)) return;
@@ -483,8 +491,6 @@ void dumpVertexShaderCreate_hook(PPCRegister& r3)
 // with the ucode hash computed at entry above.
 void dumpVertexShaderCreated_hook(PPCRegister& r3)
 {
-	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
-
 	const uint32_t handle = r3.u32;
 	if (handle < 0x10000000u || handle >= 0x90000000u) return;
 
@@ -630,8 +636,33 @@ uint64_t resolveShaderUcodeHash(uint32_t handle)
 
 }  // namespace
 
+namespace renut::shader_dump {
+
+bool TryResolveShaderUcodeHash(uint32_t handle, uint64_t& outHash)
+{
+	const uint64_t hash = resolveShaderUcodeHash(handle);
+	if (hash == 0) return false;
+	outHash = hash;
+	return true;
+}
+
+}  // namespace renut::shader_dump
+
+// Real fix (2026-08-19): this is the ONLY midasm_hook at SetVertexShader's
+// guest address (0x8222A0A8) -- nativevk_phase0.cpp used to register its own
+// separate phase0SetVertexShader_hook here too, but confirmed via a full
+// config/renut_hooks.toml sweep that codegen only keeps the LAST-defined
+// midasm_hook when two entries share the same (address, after_instruction)
+// pair (the appMainDrawStart/appMainDrawend "before/after" pattern only
+// works because after_instruction genuinely differs there). That silently
+// dropped THIS hook entirely -- shader-declaration capture was dead the
+// whole time phase0SetVertexShader_hook existed. Fixed by merging: this one
+// hook now also drives Phase 0's tracking, unconditionally (before the
+// dump_vertex_decl-gated code below), instead of a second midasm_hook entry.
 void dumpVertexShaderSet_hook(PPCRegister& r3, PPCRegister& r4)
 {
+	renut::nativevk_phase0::RecordSetVertexShader(r4.u32);
+
 	if (!REXCVAR_GET(renut_dump_vertex_decl)) return;
 	static std::once_flag entered;
 	std::call_once(entered, [&] {
