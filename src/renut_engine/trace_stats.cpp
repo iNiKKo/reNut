@@ -2,6 +2,7 @@
 
 #include <mutex>
 
+#include "renut_engine/d3d9_draw_stats.h"
 #include "renut_engine/renut_trace_hook.h"
 
 namespace renut::trace_stats {
@@ -22,8 +23,33 @@ uint64_t g_sessionDrawsTotal = 0;
 }
 
 Snapshot GetLatest() {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    return g_latest;
+    Snapshot snapshot;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        snapshot = g_latest;
+    }
+
+    // "Connect the values" without a patched SDK (2026-08-19): draws/
+    // depthonly/nopixelshader/color_draws mean the same thing whether
+    // they're measured inside the SDK's Vulkan command processor (only
+    // available with the native-renderer patch, see docs/ai/nativevk.md) or
+    // from pure D3D9 guest hooks (d3d9_draw_stats.cpp, always available).
+    // Only fill in keys the SDK trace didn't already provide -- real
+    // SDK-measured data always wins when it exists. Also flips `available`
+    // on so the panel shows this fallback data instead of "GPU trace
+    // unavailable" when that's genuinely all there is.
+    for (const auto& [key, value] : renut::d3d9_draw_stats::GetLatest()) {
+        if (snapshot.values.find(key) == snapshot.values.end()) {
+            snapshot.values[key] = value;
+        }
+    }
+    if (!snapshot.values.empty()) {
+        snapshot.available = true;
+        if (snapshot.path.empty()) {
+            snapshot.path = "(D3D9 guest hooks -- no native-renderer SDK patch loaded)";
+        }
+    }
+    return snapshot;
 }
 
 // Strong definition of the weak hook declared in renut_trace_hook.h: the

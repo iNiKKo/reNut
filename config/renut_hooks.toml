@@ -310,3 +310,47 @@ address = 0x8226CEC4
 name = "gameActivityActorGenerationEnd"
 registers = ["r3", "r4", "r5"]
 after_instruction = false
+
+# appMainDraw's own entry point (config/renut_funcs.toml) -- fires once per
+# real call into appMainDraw (~62% of real frames in practice, not fully
+# understood why, but real and working). FPS.cpp's appMainDrawend() calls
+# game_activity_stats::EndFrame() here, the only thing that refreshes the
+# snapshot the Performance tab's "Game activity" section reads.
+[[midasm_hook]]
+address = 0x82222250
+name = "appMainDrawend"
+after_instruction = true
+
+# d3d9_draw_stats.cpp: "connect the values" (draws/depthonly/nopixelshader/
+# color_draws in the F5 Performance tab) without requiring a patched SDK --
+# read-only, sourced purely from D3D9 guest hooks (config/renut_gpu_funcs.toml),
+# so it works with any GPU plugin.
+[[midasm_hook]]
+address = 0x82226730
+name = "d3d9SetPixelShader_hook"
+registers = ["r3", "r4"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222C7A0
+name = "d3d9DrawVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x826567C8
+name = "d3d9DrawIndexedVertices_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8222E520
+name = "d3d9DrawVerticesUP_hook"
+registers = []
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82656728
+name = "d3d9DrawIndexedVerticesUP_hook"
+registers = []
+after_instruction = false

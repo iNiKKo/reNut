@@ -2,6 +2,7 @@
 #include "Fps.h"
 #include <renut_engine/hooks.h>
 #include <renut_engine/Timer.h>
+#include <renut_engine/game_activity_stats.h>
 #include <rex/hook.h>
 
 //CPU Time
@@ -39,6 +40,22 @@ REX_HOOK_RAW(appMainDraw){
     // Pace the frame after the draw is submitted so the GPU renders fewer frames
     // instead of running uncapped. No-op while frame_cap is "Off".
     renutFrameLimit();
+}
+
+// Hooked from config/renut_hooks.toml, address 0x82222250 (appMainDraw's own
+// entry point per config/renut_funcs.toml) with after_instruction = true --
+// fires once per real call into appMainDraw. Real fix (2026-08-19):
+// game_activity_stats::EndFrame() (the only thing that copies the per-event
+// Record*/Finish* counters -- see game_activity_hooks.cpp -- into the
+// snapshot the Performance tab's "Game activity" section reads) needs a real
+// hook to call it from, or the displayed snapshot never advances past its
+// initial all-zero state even though the counters underneath are
+// incrementing correctly. This address only fires for ~62% of real frames
+// in practice (not confirmed why -- possibly a guest tick-rate/frame-pacing
+// mismatch), so the snapshot updates in bursts rather than every frame, but
+// that's real, working data instead of permanently dead.
+void appMainDrawend() {
+    renut::game_activity_stats::EndFrame();
 }
 
 void FPSCounter::Tick(){
