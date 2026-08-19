@@ -1,8 +1,7 @@
 #pragma once
 
 #include "imgui.h"
-
-#include <dlfcn.h>
+#include "renut_engine/overlays/dl_compat.h"
 
 // Content-only: no window/Begin/End, no hotkey. Hosted as a tab inside
 // DebugHubOverlayDialog (see debug_hub_overlay.h), which owns the single F5
@@ -29,21 +28,29 @@ inline const Api& Get() {
     static const Api api = [] {
         Api result;
         // The plugin is already resident (the graphics system came from it), so
-        // RTLD_NOLOAD just takes a handle to it rather than loading a second copy.
-        void* self = dlopen("librexgpu-nativevkrd.so", RTLD_LAZY | RTLD_NOLOAD);
+        // this only ever takes a handle to an already-loaded module, never a
+        // real load -- see dl_compat.h's own comment for why that matters.
+#ifdef _WIN32
+        void* self = RenutDlOpenNoLoad("rexgpu-nativevkrd.dll");
         if (!self) {
-            self = dlopen("librexgpu-nativevk.so", RTLD_LAZY | RTLD_NOLOAD);
+            self = RenutDlOpenNoLoad("rexgpu-nativevk.dll");
         }
+#else
+        void* self = RenutDlOpenNoLoad("librexgpu-nativevkrd.so");
+        if (!self) {
+            self = RenutDlOpenNoLoad("librexgpu-nativevk.so");
+        }
+#endif
         if (!self) {
             // Fall back to a global lookup for builds that link it directly.
-            self = dlopen(nullptr, RTLD_LAZY);
+            self = RenutDlOpenSelf();
         }
         if (self) {
-            result.start = reinterpret_cast<void (*)()>(dlsym(self, "renut_ab_start"));
-            result.stop = reinterpret_cast<void (*)()>(dlsym(self, "renut_ab_stop"));
-            result.is_active = reinterpret_cast<int (*)()>(dlsym(self, "renut_ab_is_active"));
-            result.status = reinterpret_cast<const char* (*)()>(dlsym(self, "renut_ab_status"));
-            dlclose(self);
+            result.start = reinterpret_cast<void (*)()>(RenutDlSym(self, "renut_ab_start"));
+            result.stop = reinterpret_cast<void (*)()>(RenutDlSym(self, "renut_ab_stop"));
+            result.is_active = reinterpret_cast<int (*)()>(RenutDlSym(self, "renut_ab_is_active"));
+            result.status = reinterpret_cast<const char* (*)()>(RenutDlSym(self, "renut_ab_status"));
+            RenutDlClose(self);
         }
         return result;
     }();

@@ -16,14 +16,19 @@
 #endif
 #include <functional>
 #include <string>
+// DebugHubOverlayDialog (Performance/A-B-benchmark/Native-shader tabs) used
+// to be Linux-only here (its plugin-symbol lookups used dlopen/dlsym with no
+// Windows equivalent) -- fixed 2026-08-19 via dl_compat.h's cross-platform
+// shim (see debug_hub_overlay.h), so it's available on both platforms now.
+// The Native-Shaders/A-B-Benchmark tabs still gracefully report "not
+// available" wherever the nativevk plugin isn't loaded (Windows builds
+// included, since that plugin remains Linux-only in practice) -- only the
+// Performance tab, which needs no plugin symbol lookup at all, actually
+// gained real functionality on Windows from this change.
+#include "renut_engine/overlays/debug_hub_overlay.h"
+
 #ifndef _WIN32
 #include "renut_engine/linuxfixes/xdg_paths.h"
-// DebugHubOverlayDialog (Performance/A-B-benchmark/Native-shader tabs, see
-// debug_hub_overlay.h) resolves plugin symbols with dlopen/dlsym, which has
-// no equivalent included here for Windows yet -- keep it out of Windows
-// builds rather than add an untested LoadLibrary path. The native renderer
-// it debugs is Linux-only in practice today anyway.
-#include "renut_engine/overlays/debug_hub_overlay.h"
 
 // Defined in the SDK (src/core/logging.cpp) at global scope. When non-empty it
 // takes precedence over the exe-relative logs/ directory that rex_app.cpp would
@@ -95,9 +100,7 @@ public:
         fps_dialog_->fpsManager = &fpsManager;
         drawer->AddDialog(fps_dialog_.get());
         drawer->AddDialog(new RenuLogOverlayDialog(drawer));
-#ifndef _WIN32
         drawer->AddDialog(new DebugHubOverlayDialog(drawer));
-#endif
         path_wizard_ = new PathSetupWizard(drawer);
         drawer->AddDialog(path_wizard_);
 

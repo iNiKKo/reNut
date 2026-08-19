@@ -40,12 +40,19 @@ macro(rexglue_setup_target target_name)
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/generated
     )
+    # Real fix (2026-08-19): matches the current rexglue codegen template
+    # (resources/templates/init/rexglue_cmake.inja in rexglue-sdk, confirmed
+    # against the pinned commit docs/ai/nativevk.md documents) exactly --
+    # this file previously linked a 5-way split (rex::core/system/kernel/
+    # graphics/ui) that is stale relative to that template, which links only
+    # rex::runtime. Confirmed neither rex::graphics nor rex::core exist as
+    # real targets in the pinned SDK commit at all (add_subdirectory mode:
+    # only rex::core and rex::ui ALIAS targets exist, no rex::graphics
+    # anywhere; find_package mode: only rex::runtime is exported, with
+    # rex::system/rex::kernel as ALIASes onto it) -- this stale line hard-
+    # failed configure in BOTH modes with "target ... was not found".
     target_link_libraries(${target_name} PRIVATE
-        rex::core
-        rex::system
-        rex::kernel
-        rex::graphics
-        rex::ui
+        rex::runtime
     )
     rexglue_configure_target(${target_name})
 endmacro()

@@ -6,16 +6,19 @@
 #include "imgui.h"
 #include "renut_engine/game_activity_stats.h"
 #include "renut_engine/overlays/ab_benchmark_overlay.h"
+#include "renut_engine/overlays/dl_compat.h"
 #include "renut_engine/overlays/render_stats_overlay.h"
-
-#include <dlfcn.h>
 
 // One F5 window hosting the three renderer debug panels (Renderer
 // performance, A/B benchmark, Native shader debug) as tabs, instead of three
 // separately-toggled/always-on windows scattered around the screen. The
 // native-shader tab's content lives in the GPU plugin (only rexgpu-nativevk
-// has one) and is pulled in with dlsym, the same cross-module pattern
-// ab_benchmark_overlay.h already used for renut_ab_*.
+// has one) and is pulled in with dl_compat.h's dlsym-equivalent, the same
+// cross-module pattern ab_benchmark_overlay.h already used for renut_ab_*.
+// Available on Windows too (see dl_compat.h) as of 2026-08-19 -- previously
+// this whole dialog, including the Performance tab (which needs no plugin
+// symbol lookup at all), was compiled out of Windows builds entirely because
+// only the Native Shaders/A-B Benchmark tabs actually needed dlopen/dlsym.
 class DebugHubOverlayDialog : public rex::ui::ImGuiDialog {
 public:
     explicit DebugHubOverlayDialog(rex::ui::ImGuiDrawer* drawer) : rex::ui::ImGuiDialog(drawer) {
@@ -69,20 +72,27 @@ private:
         if (!native_shader_resolved_) {
             native_shader_resolved_ = true;
             // The plugin is already resident (the graphics system came from
-            // it), so RTLD_NOLOAD just takes a handle to it rather than
-            // loading a second copy.
-            void* self = dlopen("librexgpu-nativevkrd.so", RTLD_LAZY | RTLD_NOLOAD);
+            // it), so this only ever takes a handle to an already-loaded
+            // module, never a real load -- see dl_compat.h's own comment.
+#ifdef _WIN32
+            void* self = RenutDlOpenNoLoad("rexgpu-nativevkrd.dll");
             if (!self) {
-                self = dlopen("librexgpu-nativevk.so", RTLD_LAZY | RTLD_NOLOAD);
+                self = RenutDlOpenNoLoad("rexgpu-nativevk.dll");
             }
+#else
+            void* self = RenutDlOpenNoLoad("librexgpu-nativevkrd.so");
+            if (!self) {
+                self = RenutDlOpenNoLoad("librexgpu-nativevk.so");
+            }
+#endif
             if (!self) {
                 // Fall back to a global lookup for builds that link it directly.
-                self = dlopen(nullptr, RTLD_LAZY);
+                self = RenutDlOpenSelf();
             }
             if (self) {
                 native_shader_draw_ = reinterpret_cast<void (*)()>(
-                    dlsym(self, "RenutNativeShaderDebugPanelDrawContent"));
-                dlclose(self);
+                    RenutDlSym(self, "RenutNativeShaderDebugPanelDrawContent"));
+                RenutDlClose(self);
             }
         }
         if (!native_shader_draw_) {
