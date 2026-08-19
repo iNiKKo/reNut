@@ -29,6 +29,14 @@ set(RENUT_SOURCES
 
 )
 
+if(UNIX AND NOT APPLE)
+    list(APPEND RENUT_SOURCES
+        src/renut_engine/linuxfixes/audio_client_guard.cpp
+        src/renut_engine/linuxfixes/audio_backend.cpp
+        src/renut_engine/linuxfixes/posix_file_access.cpp
+    )
+endif()
+
 if(WIN32)
 list(APPEND RENUT_SOURCES icon/app.rc)
     add_executable(renut WIN32 ${RENUT_SOURCES})
