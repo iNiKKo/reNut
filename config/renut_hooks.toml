@@ -258,3 +258,55 @@ address = 0x8255ed1c
 name = "Max_Acquired_Parts_Access_hook_3"
 registers = ["r9"]
 after_instruction = true
+
+# Debug hub / Performance tab: per-frame game-activity timing
+# (src/renut_engine/game_activity_stats.cpp). Each pair brackets one real
+# guest activity (animation streaming, body-blend, actor script, actor
+# generation) so the overlay can show live per-frame + session counts.
+[[midasm_hook]]
+address = 0x822469D0
+name = "gameActivityAnimationStream"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82246AA0
+name = "gameActivityAnimationStreamEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82B0E5B0
+name = "gameActivityBodyBlend"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x82B0E634
+name = "gameActivityBodyBlendEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x823CCE78
+name = "gameActivityActorScript"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x823CD3FC
+name = "gameActivityActorScriptEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8226CD88
+name = "gameActivityActorGeneration"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
+
+[[midasm_hook]]
+address = 0x8226CEC4
+name = "gameActivityActorGenerationEnd"
+registers = ["r3", "r4", "r5"]
+after_instruction = false
