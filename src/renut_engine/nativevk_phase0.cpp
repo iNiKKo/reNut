@@ -13,6 +13,9 @@ namespace {
 
 std::atomic<uint64_t> g_frameDrawCount{0};
 std::atomic<uint64_t> g_lastFrameDrawCount{0};
+std::atomic<uint64_t> g_sessionFrameStarts{0};
+std::atomic<uint64_t> g_sessionFrameEnds{0};
+std::atomic<uint64_t> g_sessionTotalDraws{0};
 
 std::atomic<uint64_t> g_sessionSetVertexShaderCalls{0};
 std::atomic<uint64_t> g_sessionUnresolvedCalls{0};
@@ -28,6 +31,7 @@ std::unordered_set<uint32_t> g_handlesUnresolved;
 // those thunks can reach them.
 void CountDraw() {
     g_frameDrawCount.fetch_add(1, std::memory_order_relaxed);
+    g_sessionTotalDraws.fetch_add(1, std::memory_order_relaxed);
 }
 
 void RecordSetVertexShader(uint32_t handle) {
@@ -50,6 +54,9 @@ void RecordSetVertexShader(uint32_t handle) {
 Snapshot GetLatest() {
     Snapshot snapshot;
     snapshot.last_frame_draws = g_lastFrameDrawCount.load(std::memory_order_relaxed);
+    snapshot.session_frame_starts = g_sessionFrameStarts.load(std::memory_order_relaxed);
+    snapshot.session_frame_ends = g_sessionFrameEnds.load(std::memory_order_relaxed);
+    snapshot.session_total_draws = g_sessionTotalDraws.load(std::memory_order_relaxed);
     snapshot.session_set_vertex_shader_calls = g_sessionSetVertexShaderCalls.load(std::memory_order_relaxed);
     snapshot.session_unresolved_set_vertex_shader_calls = g_sessionUnresolvedCalls.load(std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_handleMutex);
@@ -59,17 +66,36 @@ Snapshot GetLatest() {
 }
 
 // Wired from FPS.cpp's appMainDrawStart/appMainDrawend (config/renut_hooks.toml,
-// address 0x82222250 -- already wraps the guest's ENTIRE per-frame draw
-// submission, see REX_HOOK_RAW(appMainDraw) in FPS.cpp). Using this existing
-// frame boundary rather than Present/Swap keeps Phase 0's draw count scoped
-// to exactly the same span the SDK's own real per-frame "draws" trace stat
-// (trace_stats.cpp) covers, so the two numbers are directly comparable.
+// address 0x82222250, appMainDraw's real entry point per config/renut_funcs.toml).
+//
+// Real, confirmed bug (2026-08-19, playtest diagnostics): appMainDrawStart
+// NEVER fires -- confirmed via `grep appMainDrawStart generated/*.cpp`
+// finding zero matches, only appMainDrawend. rexglue's codegen silently
+// drops one of two midasm_hook entries sharing the same address (same
+// pattern confirmed on the sibling appMainTickPreDrawStart/end pair -- only
+// "end" survives there too). So FrameStart() below is effectively dead code
+// today (kept in case a future codegen fix makes the pair work again, which
+// would just make these two calls redundant, not wrong). FrameEnd() alone
+// is made self-contained (atomic exchange, not separate load+store) so it
+// works correctly whether or not FrameStart ever actually runs alongside it.
+//
+// Second confirmed issue: even the one working hook only fired 8765 times
+// against the SDK's own 14218 real frames in the same session (~62%) -- this
+// address is NOT a reliable 1:1-with-real-frames marker (likely a guest
+// tick-rate/frame-pacing mismatch, not another codegen bug). That makes any
+// single "last frame" snapshot fundamentally unreliable here, not just
+// broken by the dead-hook bug above -- see Snapshot::last_frame_draws and
+// the diagnostics fields' own comments. GetLatest() callers should prefer
+// comparing session_total_draws against trace_stats' session_draws_total
+// (both cumulative, no frame-alignment assumption needed) over
+// last_frame_draws for the actual Phase 0 go/no-go call.
 void FrameStart() {
-    g_frameDrawCount.store(0, std::memory_order_relaxed);
+    g_sessionFrameStarts.fetch_add(1, std::memory_order_relaxed);
 }
 
 void FrameEnd() {
-    g_lastFrameDrawCount.store(g_frameDrawCount.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    g_sessionFrameEnds.fetch_add(1, std::memory_order_relaxed);
+    g_lastFrameDrawCount.store(g_frameDrawCount.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
 }
 
 }  // namespace renut::nativevk_phase0

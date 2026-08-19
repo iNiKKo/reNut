@@ -12,12 +12,28 @@
 namespace renut::nativevk_phase0 {
 
 struct Snapshot {
-    // D3D9-hook draw count for the last fully-completed frame (sum of
-    // DrawVertices/DrawIndexedVertices/DrawVerticesUP/DrawIndexedVerticesUP
-    // hook hits between one appMainDrawStart and the next). Compare against
-    // trace_stats::GetLatest()'s "draws" value (the SDK's own real Vulkan
-    // draw-submission count) -- close agreement is Phase 0's coverage gate.
+    // D3D9-hook draw count between the two most recent appMainDrawend hook
+    // fires (see FrameEnd()'s own comment for real, confirmed problems with
+    // treating this as "one real frame" -- appMainDrawStart never fires at
+    // all, and even the one working hook only covers ~62% of the SDK's own
+    // real frame count in testing). Kept as a rough diagnostic only --
+    // PREFER session_total_draws vs trace_stats::GetLatest()'s
+    // "session_draws_total" (both session-cumulative) for the actual Phase 0
+    // coverage gate, since that comparison needs no frame-alignment
+    // assumption at all.
     uint64_t last_frame_draws = 0;
+
+    // Raw diagnostic counters (2026-08-19): confirmed via
+    // `grep appMainDrawStart generated/*.cpp` (zero matches) that rexglue's
+    // codegen silently drops one of two midasm_hook entries sharing an
+    // address -- appMainDrawStart never fires, only appMainDrawend does, and
+    // even that one only fired 8765 times against the SDK's own 14218 real
+    // frames in one session (~62%). session_total_draws is the reliable
+    // session-cumulative D3D9-hook draw count -- compare it against
+    // trace_stats' own session-cumulative "session_draws_total".
+    uint64_t session_frame_starts = 0;
+    uint64_t session_frame_ends = 0;
+    uint64_t session_total_draws = 0;
 
     // Session-lifetime SetVertexShader (0x8222A0A8) call count, and how many
     // of those calls carried a handle TryResolveShaderUcodeHash could NOT

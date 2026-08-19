@@ -90,11 +90,16 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
     ImGui::TextDisabled("close to the real draw count, and are shader handles resolvable?");
     {
         const auto phase0 = renut::nativevk_phase0::GetLatest();
-        ImGui::Text("%-28s %7llu", "D3D9-hook draws (last frame)",
-            static_cast<unsigned long long>(phase0.last_frame_draws));
-        if (Has(trace, "draws")) {
-            const double sdkDraws = Value(trace, "draws");
-            const double ratio = sdkDraws > 0.0 ? double(phase0.last_frame_draws) / sdkDraws * 100.0 : 0.0;
+        // Session-cumulative comparison, not a single-frame snapshot -- see
+        // nativevk_phase0.h's own comment for why last_frame_draws isn't
+        // trustworthy (appMainDrawStart never fires; even the one working
+        // hook only covers ~62% of real frames). This needs no assumption
+        // that the two measurement paths share a frame boundary at all.
+        ImGui::Text("%-28s %7llu", "D3D9-hook draws (session)",
+            static_cast<unsigned long long>(phase0.session_total_draws));
+        if (Has(trace, "session_draws_total")) {
+            const double sdkDraws = Value(trace, "session_draws_total");
+            const double ratio = sdkDraws > 0.0 ? double(phase0.session_total_draws) / sdkDraws * 100.0 : 0.0;
             ImGui::Text("%-28s %6.1f %%  (%.0f real)", "...as %% of SDK draws", ratio, sdkDraws);
         } else {
             Unmeasured("...as % of SDK draws");
@@ -112,6 +117,24 @@ inline void DrawTrace(const renut::trace_stats::Snapshot& trace) {
             static_cast<unsigned long long>(phase0.session_distinct_handles_unresolved));
         ImGui::TextDisabled("Unresolved = SetVertexShader handle never seen at CreateVertexShader");
         ImGui::TextDisabled("(the known IM_LOAD-bypass risk) -- resolvable via ucode-hash correlation");
+        if (ImGui::CollapsingHeader("Phase 0 raw diagnostics (frame-boundary sanity check)")) {
+            ImGui::TextDisabled("Confirmed 2026-08-19: appMainDrawStart never fires (codegen drops one");
+            ImGui::TextDisabled("of two hooks sharing an address), and even appMainDrawend only covers");
+            ImGui::TextDisabled("~62%% of real frames -- this is why the coverage %% above uses session-");
+            ImGui::TextDisabled("cumulative totals, not a last-frame snapshot. Kept for reference.");
+            ImGui::Text("%-28s %7llu", "Frame-start hook fires", static_cast<unsigned long long>(phase0.session_frame_starts));
+            ImGui::Text("%-28s %7llu", "Frame-end hook fires", static_cast<unsigned long long>(phase0.session_frame_ends));
+            ImGui::Text("%-28s %7llu", "Total draws (session)", static_cast<unsigned long long>(phase0.session_total_draws));
+            if (Has(trace, "frame")) {
+                ImGui::Text("%-28s %7.0f", "SDK real frame count", Value(trace, "frame"));
+            } else {
+                Unmeasured("SDK real frame count");
+            }
+            ImGui::TextDisabled("If frame-start/end fires are far below SDK real frame count, the");
+            ImGui::TextDisabled("appMainDrawStart/end hook (0x82222250) is NOT firing once per real");
+            ImGui::TextDisabled("frame despite being appMainDraw's real entry -- last_frame_draws above");
+            ImGui::TextDisabled("would then span many real frames, not one, and isn't trustworthy yet.");
+        }
         ImGui::TextDisabled("only if the shader DID go through CreateVertexShader at some point.");
     }
     if (ImGui::CollapsingHeader("All trace timings")) {

@@ -9,6 +9,16 @@ namespace renut::trace_stats {
 namespace {
 std::mutex g_mutex;
 Snapshot g_latest;
+// Session-cumulative sum of row->draws across every RenutEmitTraceRow call
+// (2026-08-19, see docs/ai/archive/native-renderer-rewrite-plan.md Phase 0):
+// a single frame's "draws" value isn't safely comparable against
+// nativevk_phase0's session-cumulative D3D9-hook draw count -- the two hook
+// mechanisms don't share a common, reliably-firing per-frame boundary (the
+// appMainDrawStart/appMainDrawend pair Phase 0 originally used to scope a
+// "last frame" snapshot turned out not to fire once per real frame; see that
+// file's own comment). Comparing session totals sidesteps needing any frame
+// alignment between the two measurement paths at all.
+uint64_t g_sessionDrawsTotal = 0;
 }
 
 Snapshot GetLatest() {
@@ -58,6 +68,8 @@ extern "C" void RenutEmitTraceRow(const RenutTraceRow* row) {
     values["nopixelshader"] = double(row->nopixelshader);
 
     std::lock_guard<std::mutex> lock(g_mutex);
+    g_sessionDrawsTotal += row->draws;
+    values["session_draws_total"] = double(g_sessionDrawsTotal);
     g_latest = std::move(snapshot);
 }
 
