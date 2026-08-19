@@ -75,6 +75,23 @@ public:
     }
 #endif
 
+    // Real gap found 2026-08-19: rexglue-sdk's own gpu_plugin cvar defaults
+    // to "" (rex_app.cpp: "empty disables GPU emulation"), not "xenos" --
+    // there is no hardcoded default anywhere pointing at nativevk either.
+    // A genuinely fresh install (no existing renut.toml) would get NO
+    // graphics at all, silently, since SetupPresentation() only loads a
+    // plugin when gpu_plugin is non-empty. rexgpu-nativevk also isn't even
+    // compiled in by default (GPU_PLUGINS is xenos-only, see this repo's
+    // own CMakeLists.txt) -- xenos is the only plugin every normal build
+    // actually has, so it's the only sane default. Only fills in when empty:
+    // an existing renut.toml (including one still saying "nativevk" from a
+    // prior local nativevk.md setup) is left alone, not overridden.
+    void OnPreSetup(rex::RuntimeConfig& config) override {
+        if (config.gpu_plugin.empty()) {
+            config.gpu_plugin = "xenos";
+        }
+    }
+
      void OnPostSetup() override {
     #ifdef _WIN32
         rex::discord_rpc::Presence rpc;
