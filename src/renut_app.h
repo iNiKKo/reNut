@@ -14,6 +14,16 @@
 #include <functional>
 #include <string>
 
+#ifndef _WIN32
+#include <rex/cvar.h>
+#include "renut_engine/linuxfixes/xdg_paths.h"
+
+// Defined in the SDK (src/core/logging.cpp) at global scope. When non-empty it
+// takes precedence over the exe-relative logs/ directory that rex_app.cpp would
+// otherwise hardcode.
+REXCVAR_DECLARE(std::string, log_file);
+#endif
+
 class RenutApp : public rex::ReXApp {
 public:
     RenutApp(rex::ui::WindowedAppContext& ctx, std::string_view name, rex::PPCImageInfo info)
@@ -24,6 +34,34 @@ public:
         return std::unique_ptr<RenutApp>(new RenutApp(ctx, "renut", PPCImageConfig));
     }
 
+#ifndef _WIN32
+    // Runs before the SDK loads the config and before logging is initialised
+    // (rex_app.cpp:146), which is the only point where both destinations can
+    // still be redirected.
+    //
+    // Without this, renut writes <exe_dir>/renut.toml and <exe_dir>/logs/ --
+    // fine in a build tree, fatal inside a read-only AppImage/Flatpak mount.
+    void OnConfigurePaths(rex::PathConfig& paths) override {
+        namespace lf = renut::linuxfixes;
+
+        // ~/.config/renut/renut.toml, migrating any existing exe-relative copy.
+        paths.config_path = lf::ResolveWithMigration(lf::ConfigDir(),
+                                                     std::string(GetName()) + ".toml");
+
+        // ~/.local/state/renut/logs/renut_NNN.log. Setting log_file is the only
+        // way to move the log directory, since rex_app.cpp hardcodes exe_dir/logs
+        // whenever this cvar is empty -- so we do the sequential numbering that
+        // the SDK would otherwise have done for us.
+        if (REXCVAR_GET(log_file).empty()) {
+            auto log_path = lf::NextSequentialLog(lf::LogDir(), std::string(GetName()));
+            if (!log_path.empty()) {
+                REXCVAR_SET(log_file, log_path.string());
+            }
+            // If the state dir could not be created we leave the cvar empty and
+            // let the SDK fall back to its exe-relative default.
+        }
+    }
+#endif
 
     // void OnPostSetup() override {
     //     rex::discord_rpc::Presence rpc;

@@ -1,4 +1,10 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
+#else
+#include <time.h>
+#endif
 
 #include <rex/hook.h>
 #include "rex_macros.h"
@@ -72,8 +78,10 @@ void klungoDestruct_hook() // Called at 8246f62c (End of the function)
 // almost no load of its own. It is deliberately named separately from rexglue's
 // GPU `vsync` cvar and does not touch the SDK.
 // =============================================================================
+#ifdef _WIN32
 #ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 #define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
 #endif
 
 REXCVAR_DEFINE_STRING(frame_cap, "Off", "Nuts&Bolts/Performance",
@@ -81,6 +89,7 @@ REXCVAR_DEFINE_STRING(frame_cap, "Off", "Nuts&Bolts/Performance",
 	"Off = uncapped, Display = match monitor refresh.")
 	.allowed({ "Off", "30", "60", "120", "144", "Display" });
 
+#ifdef _WIN32
 // One process-wide timer, created on first use. Falls back to a normal waitable
 // timer (and then to sleep_for) if the high-resolution flag isn't supported.
 static HANDLE renutFrameTimer()
@@ -93,6 +102,7 @@ static HANDLE renutFrameTimer()
 	}();
 	return timer;
 }
+#endif
 
 // Resolve the cvar to a target FPS: 0 = uncapped, "Display" = monitor refresh
 // (queried once), otherwise the literal number.
@@ -101,6 +111,7 @@ static int renutFrameCapFps()
 	const std::string& v = REXCVAR_GET(frame_cap);
 	if (v.empty() || v == "Off") return 0;
 	if (v == "Display") {
+#ifdef _WIN32
 		static int hz = []() -> int {
 			DEVMODEW dm{}; dm.dmSize = sizeof(dm);
 			if (EnumDisplaySettingsW(nullptr, ENUM_CURRENT_SETTINGS, &dm) &&
@@ -109,6 +120,11 @@ static int renutFrameCapFps()
 			return 60;
 		}();
 		return hz;
+#else
+		// No portable display-refresh query without pulling in a windowing
+		// dependency here; assume a common default.
+		return 60;
+#endif
 	}
 	return std::atoi(v.c_str());
 }
@@ -136,7 +152,9 @@ void renutFrameLimit()
 		return;
 	}
 
+#ifdef _WIN32
 	HANDLE timer = renutFrameTimer();
+#endif
 	constexpr auto kSpinTail = std::chrono::microseconds(400);
 	for (;;) {
 		now = clock::now();
@@ -144,6 +162,7 @@ void renutFrameLimit()
 		const auto remaining = next - now;
 		if (remaining > kSpinTail) {
 			const auto waitFor = remaining - kSpinTail;
+#ifdef _WIN32
 			if (timer) {
 				LARGE_INTEGER due;
 				due.QuadPart = -static_cast<LONGLONG>(
@@ -155,6 +174,16 @@ void renutFrameLimit()
 			} else {
 				std::this_thread::sleep_for(waitFor);
 			}
+#else
+			// clock_nanosleep with TIMER_ABSTIME avoids drift from repeatedly
+			// re-measuring "now" the way sleep_for's relative wait would.
+			const auto target = next - kSpinTail;
+			const auto targetNs = std::chrono::time_point_cast<std::chrono::nanoseconds>(target);
+			struct timespec ts;
+			ts.tv_sec = static_cast<time_t>(targetNs.time_since_epoch().count() / 1000000000LL);
+			ts.tv_nsec = static_cast<long>(targetNs.time_since_epoch().count() % 1000000000LL);
+			clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+#endif
 		} else {
 			std::this_thread::yield();  // brief sub-ms tail for pacing accuracy
 		}
